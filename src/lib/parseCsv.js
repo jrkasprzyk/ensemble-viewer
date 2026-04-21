@@ -57,5 +57,18 @@ export async function parseCsvFile(file, { labelRowCount = 0 } = {}) {
     return obj
   })
 
+  // Validate: ensure at least one data column has numeric values. This
+  // catches cases where a user accidentally loads a labels/sidecar CSV as
+  // the main data file (those files are non-numeric and would produce
+  // all-NaN traces that can trigger Plotly/WebGL warnings).
+  const numericCounts = columns.map((c) =>
+    rows.reduce((acc, r) => acc + (Number.isFinite(r[c]) ? 1 : 0), 0)
+  )
+  if (numericCounts.every((n) => n === 0)) {
+    throw new Error(
+      'CSV contains no numeric data. If this is a labels/sidecar file, attach it using the sidecar option.'
+    )
+  }
+
   return { columns, indexColumn, rows, labelsByColumn }
 }

@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, lazy, Suspense } from 'react'
 import FileDropzone from './components/FileDropzone.jsx'
 import LabelStrategyPicker from './components/LabelStrategyPicker.jsx'
 import LabelControls from './components/LabelControls.jsx'
-import EnsemblePlot from './components/EnsemblePlot.jsx'
+const EnsemblePlot = lazy(() => import('./components/EnsemblePlot.jsx'))
 import { parseCsvFile } from './lib/parseCsv.js'
 import { parseXlsxFile } from './lib/parseXlsx.js'
 import {
@@ -216,16 +216,18 @@ export default function App() {
           {rows.length === 0 ? (
             <EmptyState />
           ) : (
-            <EnsemblePlot
-              rows={rows}
-              indexColumn={indexColumn}
-              columns={columns}
-              labelsByColumn={labelsByColumn}
-              colorBy={colorBy}
-              visibleColumns={visibleColumns}
-              showBands={showBands}
-              indexType={indexType}
-            />
+            <Suspense fallback={<div>Loading plot…</div>}>
+              <EnsemblePlot
+                rows={rows}
+                indexColumn={indexColumn}
+                columns={columns}
+                labelsByColumn={labelsByColumn}
+                colorBy={colorBy}
+                visibleColumns={visibleColumns}
+                showBands={showBands}
+                indexType={indexType}
+              />
+            </Suspense>
           )}
         </section>
       </main>

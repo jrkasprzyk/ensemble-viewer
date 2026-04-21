@@ -43,5 +43,17 @@ export async function parseXlsxFile(file, { labelRowCount = 0, sheetName } = {})
     return obj
   })
 
+  // Validate presence of numeric data to avoid plotting non-numeric
+  // label-only sheets as the main dataset (which would produce all-NaN
+  // traces and provoke WebGL/Plotly warnings).
+  const numericCounts = columns.map((c) =>
+    rows.reduce((acc, r) => acc + (Number.isFinite(r[c]) ? 1 : 0), 0)
+  )
+  if (numericCounts.every((n) => n === 0)) {
+    throw new Error(
+      'Sheet contains no numeric data. If this is a labels file, attach it using the sidecar option.'
+    )
+  }
+
   return { columns, indexColumn, rows, labelsByColumn, sheetNames: wb.SheetNames }
 }
