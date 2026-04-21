@@ -1,13 +1,34 @@
 import { useRef, useState } from 'react'
+import { getSampleFile, fetchHostedSample } from '../lib/sampleData.js'
 
 export default function FileDropzone({ onFile, onSidecar, hasData }) {
   const inputRef = useRef(null)
   const sidecarRef = useRef(null)
   const [drag, setDrag] = useState(false)
+  const [loadingSample, setLoadingSample] = useState(false)
 
   function handleFiles(files) {
     if (!files || !files.length) return
     onFile(files[0])
+  }
+
+  async function handleLoadSample() {
+    setLoadingSample(true)
+    try {
+      let file
+      try {
+        // Try to fetch a hosted copy first (works when deployed)
+        file = await fetchHostedSample()
+      } catch (e) {
+        // Fall back to the bundled sample
+        file = getSampleFile()
+      }
+      onFile(file)
+    } catch (e) {
+      console.error('Failed to load sample', e)
+    } finally {
+      setLoadingSample(false)
+    }
   }
 
   return (
@@ -32,12 +53,22 @@ export default function FileDropzone({ onFile, onSidecar, hasData }) {
             {hasData ? 'Replace CSV or XLSX…' : 'Drop CSV or XLSX, or click to browse'}
           </span>
         </div>
-        <button
-          onClick={() => inputRef.current?.click()}
-          className="px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider border border-ink hover:bg-ink hover:text-paper transition-colors"
-        >
-          Browse
-        </button>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => inputRef.current?.click()}
+            className="px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider border border-ink hover:bg-ink hover:text-paper transition-colors"
+          >
+            Browse
+          </button>
+          <button
+            onClick={handleLoadSample}
+            disabled={loadingSample}
+            className="px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider border border-rule hover:bg-ink hover:text-paper transition-colors disabled:opacity-50"
+          >
+            {loadingSample ? 'Loading…' : 'Load sample'}
+          </button>
+        </div>
       </div>
       <input
         ref={inputRef}

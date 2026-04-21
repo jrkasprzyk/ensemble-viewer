@@ -254,7 +254,7 @@ function EmptyState() {
           you have.
         </p>
         <p className="text-xs text-muted mt-4 font-mono">
-          Try <code>public/sample-data/ensemble.csv</code>
+          Or click the Load sample button above to load a small demo dataset.
         </p>
       </div>
     </div>
