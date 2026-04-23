@@ -51,6 +51,8 @@ export default function App() {
       setRows(parsed.rows)
       setIndexColumn(parsed.indexColumn)
       setIndexType(detectIndexType(parsed.rows, parsed.indexColumn))
+      // Reset colorBy so a stale category from the previous file doesn't persist.
+      setColorBy(null)
 
       // If the file had stacked header rows, use those labels immediately.
       if (lrc > 0 && Object.keys(parsed.labelsByColumn).length) {
@@ -74,6 +76,7 @@ export default function App() {
   }
 
   async function loadSidecar(f) {
+    setError(null)
     try {
       const labels = await parseSidecarLabels(f)
       setLabelsByColumn(labels)

@@ -82,7 +82,11 @@ export default function EnsemblePlot({
         const color = colorMap[val] || NEUTRAL_GRAY
         const rgba = hexToRgba(color, 0.18)
 
-        // Lower bound (no line, just anchor for fill)
+        // Lower bound — invisible line used only as the bottom anchor for the fill.
+        // ORDERING CONSTRAINT: this trace MUST be pushed immediately before the
+        // upper-bound trace below. Plotly's `fill: 'tonexty'` fills between a
+        // trace and the trace that was added directly before it in the array.
+        // Inserting any other trace between these two breaks the shading.
         traces.push({
           type: 'scatter',
           mode: 'lines',
@@ -93,7 +97,7 @@ export default function EnsemblePlot({
           showlegend: false,
           legendgroup: `band-${val}`,
         })
-        // Upper bound with fill back to previous trace
+        // Upper bound — fills back to the lower-bound trace directly above.
         traces.push({
           type: 'scatter',
           mode: 'lines',
