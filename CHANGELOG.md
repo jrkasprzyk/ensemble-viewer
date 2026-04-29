@@ -7,6 +7,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 ## [Unreleased]
 
 ### Added
+- `README.md` — project overview, quick-start guide, data format reference, command table, and tech stack summary
+- `CONTRIBUTING.md` — local setup, test instructions, project structure guide, PR workflow, and JS gotchas for Python/R contributors
 - Vitest test infrastructure (`package.json` scripts: `test`, `test:watch`; `vite.config.js` `test` block)
 - `src/lib/stats.test.js` — 8 tests for `computeGroupStats`: mean, median, percentiles, NaN propagation, empty-column edge cases
 - `src/lib/labels.test.js` — 19 tests for `parseLabelsFromNames`, `summarizeLabels`, `detectIndexType`, `parseSidecarLabels`
