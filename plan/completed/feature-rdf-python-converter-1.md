@@ -4,13 +4,13 @@ version: 1.0
 date_created: 2026-05-18
 last_updated: 2026-05-18
 owner: Joseph Kasprzyk
-status: 'Planned'
+status: 'Completed'
 tags: [feature, data, cli, python]
 ---
 
 # Introduction
 
-![Status: Planned](https://img.shields.io/badge/status-Planned-blue)
+![Status: Completed](https://img.shields.io/badge/status-Completed-green)
 
 Add a `scripts/` folder containing Python utilities to parse RiverWare `.rdf` files (multi-trace ensemble output) and export any selected slot as a CSV compatible with ensemble-viewer. A CLI provides `info` (list slots/metadata) and `convert` (export one slot to CSV) sub-commands.
 
