@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseCsvFile } from './parseCsv.js'
+import { parseCsvFile, detectLabelRowCount } from './parseCsv.js'
 
 // Helper: wrap a CSV string in an object that mimics the browser File API.
 function makeFile(csvText) {
@@ -91,5 +91,64 @@ describe('parseCsvFile', () => {
     // runA is all-NaN but runB has valid numbers — should succeed.
     const csv = 'year,runA,runB\n2020,foo,100\n'
     await expect(parseCsvFile(makeFile(csv))).resolves.toBeDefined()
+  })
+
+  it('returns detected labelRowCount in the result', async () => {
+    const csv = 'year,runA,runB\n2020,100,200\n'
+    const { labelRowCount } = await parseCsvFile(makeFile(csv))
+    expect(labelRowCount).toBe(0)
+  })
+})
+
+describe('detectLabelRowCount', () => {
+  it('returns 0 for a simple header + data file', () => {
+    const raw = [['year', 'runA', 'runB'], ['2020', '100', '200']]
+    expect(detectLabelRowCount(raw)).toBe(0)
+  })
+
+  it('detects 1 label row', () => {
+    const raw = [
+      ['scenario', 'RCP85', 'RCP45'],
+      ['year', 'runA', 'runB'],
+      ['2020', '100', '200'],
+    ]
+    expect(detectLabelRowCount(raw)).toBe(1)
+  })
+
+  it('detects 3 label rows (ensemble_stacked.csv pattern)', () => {
+    const raw = [
+      ['scenario', 'RCP26', 'RCP85'],
+      ['gcm', 'CanESM5', 'MIROC6'],
+      ['run', 'r1', 'r2'],
+      ['year', 'series1', 'series2'],
+      ['2020', '101', '99'],
+    ]
+    expect(detectLabelRowCount(raw)).toBe(3)
+  })
+
+  it('detects 2 label rows with numeric label values and date index', () => {
+    // Chelan-style: label category names are long strings, label values are
+    // numbers (years / percentages), index column is ISO date strings.
+    const raw = [
+      ['Trace Historical Year', '1929.0', '1930.0'],
+      ['Historical Year Percent of Average', '63.0', '68.0'],
+      ['date', 'trace_1', 'trace_2'],
+      ['2025-10-02', '1097.43', '1097.43'],
+    ]
+    expect(detectLabelRowCount(raw)).toBe(2)
+  })
+
+  it('handles native number cell types (XLSX pattern)', () => {
+    const raw = [
+      ['scenario', 'RCP85', 'RCP45'],
+      ['year', 'runA', 'runB'],
+      [2020, 100, 200],   // native numbers, not strings
+    ]
+    expect(detectLabelRowCount(raw)).toBe(1)
+  })
+
+  it('returns 0 when no label rows present', () => {
+    const raw = [['date', 'trace_1'], ['2025-01-01', '42']]
+    expect(detectLabelRowCount(raw)).toBe(0)
   })
 })
