@@ -4,7 +4,7 @@ Python utilities to read RiverWare `.rdf` ensemble files and convert them to CSV
 
 ## Requirements
 
-Python 3.9+. No third-party packages required — stdlib only.
+Python 3.12+. No third-party packages required — stdlib only.
 
 Check your version:
 
