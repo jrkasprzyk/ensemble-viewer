@@ -9,8 +9,11 @@ import {
   parseLabelsFromNames,
   parseSidecarLabels,
   summarizeLabels,
+  tieLabelCategories,
   detectIndexType,
 } from './lib/labels.js'
+
+const EMPTY_LABEL = '⟨empty⟩'
 
 export default function App() {
   // Raw dataset
@@ -31,6 +34,11 @@ export default function App() {
   const [activeByCategory, setActiveByCategory] = useState({})
   const [colorBy, setColorBy] = useState(null)
   const [showBands, setShowBands] = useState(false)
+  const [xAxisLabel, setXAxisLabel] = useState('')
+  const [yAxisLabel, setYAxisLabel] = useState('')
+  const [splitBy, setSplitBy] = useState('')
+  const [tieCategoryA, setTieCategoryA] = useState('')
+  const [tieCategoryB, setTieCategoryB] = useState('')
 
   // UI
   const [error, setError] = useState(null)
@@ -103,7 +111,13 @@ export default function App() {
 
   // --- Derived state -----------------------------------------------------
 
-  const categoryValues = useMemo(() => summarizeLabels(labelsByColumn), [labelsByColumn])
+  const baseCategoryValues = useMemo(() => summarizeLabels(labelsByColumn), [labelsByColumn])
+
+  const effectiveLabelsByColumn = useMemo(() => {
+    return tieLabelCategories(labelsByColumn, [tieCategoryA, tieCategoryB])
+  }, [labelsByColumn, tieCategoryA, tieCategoryB])
+
+  const categoryValues = useMemo(() => summarizeLabels(effectiveLabelsByColumn), [effectiveLabelsByColumn])
 
   // When categories change, initialize activeByCategory with "all selected"
   useEffect(() => {
@@ -114,12 +128,22 @@ export default function App() {
     setActiveByCategory(next)
   }, [categoryValues])
 
+  useEffect(() => {
+    if (colorBy && !categoryValues[colorBy]) {
+      setColorBy(null)
+      setShowBands(false)
+    }
+    if (splitBy && !categoryValues[splitBy]) {
+      setSplitBy('')
+    }
+  }, [categoryValues, colorBy, splitBy])
+
   // Compute which columns are currently visible given the filters
   const visibleColumns = useMemo(() => {
     const cats = Object.keys(categoryValues)
     const out = new Set()
     for (const col of columns) {
-      const labels = labelsByColumn[col] || {}
+      const labels = effectiveLabelsByColumn[col] || {}
       let ok = true
       for (const cat of cats) {
         const active = activeByCategory[cat]
@@ -128,7 +152,21 @@ export default function App() {
       if (ok) out.add(col)
     }
     return out
-  }, [columns, labelsByColumn, activeByCategory, categoryValues])
+  }, [columns, effectiveLabelsByColumn, activeByCategory, categoryValues])
+
+  const plotGroups = useMemo(() => {
+    if (!splitBy || !categoryValues[splitBy]) {
+      return [{ key: 'all', title: null, columns }]
+    }
+    const activeValues = activeByCategory[splitBy] || new Set()
+    return categoryValues[splitBy]
+      .filter((val) => activeValues.has(val))
+      .map((val) => ({
+        key: `${splitBy}:${JSON.stringify(val)}`,
+        title: `${splitBy}: ${val || EMPTY_LABEL}`,
+        columns: columns.filter((c) => (effectiveLabelsByColumn[c]?.[splitBy] ?? '') === val),
+      }))
+  }, [splitBy, categoryValues, activeByCategory, columns, effectiveLabelsByColumn])
 
   // --- Handlers ----------------------------------------------------------
 
@@ -203,6 +241,17 @@ export default function App() {
               onColorByChange={setColorBy}
               showBands={showBands}
               onShowBandsChange={setShowBands}
+              xAxisLabel={xAxisLabel}
+              yAxisLabel={yAxisLabel}
+              onXAxisLabelChange={setXAxisLabel}
+              onYAxisLabelChange={setYAxisLabel}
+              splitBy={splitBy}
+              onSplitByChange={setSplitBy}
+              tieCategoryA={tieCategoryA}
+              tieCategoryB={tieCategoryB}
+              onTieCategoryAChange={setTieCategoryA}
+              onTieCategoryBChange={setTieCategoryB}
+              tieCategoryOptions={Object.keys(baseCategoryValues)}
             />
           )}
 
@@ -218,16 +267,31 @@ export default function App() {
             <EmptyState />
           ) : (
             <Suspense fallback={<div>Loading plot…</div>}>
-              <EnsemblePlot
-                rows={rows}
-                indexColumn={indexColumn}
-                columns={columns}
-                labelsByColumn={labelsByColumn}
-                colorBy={colorBy}
-                visibleColumns={visibleColumns}
-                showBands={showBands}
-                indexType={indexType}
-              />
+              <div className="h-full overflow-y-auto flex flex-col gap-3">
+                {plotGroups.map((group) => (
+                  <div key={group.key} className={plotGroups.length > 1 ? 'h-[320px] min-h-[320px]' : 'h-full'}>
+                    {group.title && (
+                      <div className="mb-1 text-[11px] font-mono text-muted uppercase tracking-wider">
+                        {group.title}
+                      </div>
+                    )}
+                    <div className={group.title ? 'h-[calc(100%-1.25rem)]' : 'h-full'}>
+                      <EnsemblePlot
+                        rows={rows}
+                        indexColumn={indexColumn}
+                        columns={group.columns}
+                        labelsByColumn={effectiveLabelsByColumn}
+                        colorBy={colorBy}
+                        visibleColumns={visibleColumns}
+                        showBands={showBands}
+                        indexType={indexType}
+                        xAxisLabel={xAxisLabel}
+                        yAxisLabel={yAxisLabel}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </Suspense>
           )}
         </section>

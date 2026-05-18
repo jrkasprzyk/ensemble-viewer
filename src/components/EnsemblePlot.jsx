@@ -31,6 +31,8 @@ export default function EnsemblePlot({
   visibleColumns,   // Set<string> of columns currently shown
   showBands,        // boolean — draw percentile bands per group
   indexType,        // 'datetime' | 'numeric'
+  xAxisLabel,       // optional x-axis label override
+  yAxisLabel,       // optional y-axis label
 }) {
   const { traces, layout } = useMemo(() => {
     if (!rows || !rows.length) return { traces: [], layout: {} }
@@ -137,13 +139,14 @@ export default function EnsemblePlot({
         linecolor: '#1a1a1a',
         ticks: 'outside',
         tickcolor: '#1a1a1a',
-        title: { text: indexColumn, standoff: 8 },
+        title: { text: xAxisLabel || indexColumn, standoff: 8 },
       },
       yaxis: {
         gridcolor: '#e6e3db',
         linecolor: '#1a1a1a',
         ticks: 'outside',
         tickcolor: '#1a1a1a',
+        title: yAxisLabel ? { text: yAxisLabel, standoff: 8 } : undefined,
         zeroline: false,
       },
       showlegend: showBands && !!colorBy,
@@ -157,7 +160,7 @@ export default function EnsemblePlot({
     }
 
     return { traces, layout }
-  }, [rows, indexColumn, columns, labelsByColumn, colorBy, visibleColumns, showBands, indexType])
+  }, [rows, indexColumn, columns, labelsByColumn, colorBy, visibleColumns, showBands, indexType, xAxisLabel, yAxisLabel])
 
   return (
     <Plot
