@@ -105,6 +105,7 @@ describe('tieLabelCategories', () => {
     const labelsByColumn = { run1: { Year: '1988' } }
     expect(tieLabelCategories(labelsByColumn, ['Year'])).toBe(labelsByColumn)
     expect(tieLabelCategories(labelsByColumn, [])).toBe(labelsByColumn)
+    expect(tieLabelCategories(labelsByColumn, ['Year', 'Year'])).toBe(labelsByColumn)
   })
 })
 

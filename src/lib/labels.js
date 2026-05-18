@@ -131,7 +131,7 @@ export function summarizeLabels(labelsByColumn) {
  * @returns {Record<string, Record<string, string>>}
  */
 export function tieLabelCategories(labelsByColumn, categories = []) {
-  const cats = categories.filter(Boolean)
+  const cats = [...new Set(categories.filter(Boolean))]
   if (cats.length < 2) return labelsByColumn
 
   const tiedName = cats.join(' + ')

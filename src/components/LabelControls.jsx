@@ -30,7 +30,7 @@ export default function LabelControls({
   tieCategoryOptions,
 }) {
   const categoryNames = useMemo(() => Object.keys(categoryValues), [categoryValues])
-  const tieCategories = tieCategoryOptions || categoryNames
+  const tieCategories = tieCategoryOptions
 
   return (
     <div className="flex flex-col gap-3 text-xs">

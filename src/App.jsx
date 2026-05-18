@@ -113,8 +113,6 @@ export default function App() {
   const baseCategoryValues = useMemo(() => summarizeLabels(labelsByColumn), [labelsByColumn])
 
   const effectiveLabelsByColumn = useMemo(() => {
-    if (!tieCategoryA || !tieCategoryB) return labelsByColumn
-    if (tieCategoryA === tieCategoryB) return labelsByColumn
     return tieLabelCategories(labelsByColumn, [tieCategoryA, tieCategoryB])
   }, [labelsByColumn, tieCategoryA, tieCategoryB])
 
@@ -163,7 +161,7 @@ export default function App() {
     return categoryValues[splitBy]
       .filter((val) => activeValues.has(val))
       .map((val) => ({
-        key: val || EMPTY_LABEL,
+        key: `${splitBy}:${val}`,
         title: `${splitBy}: ${val || EMPTY_LABEL}`,
         columns: columns.filter((c) => (effectiveLabelsByColumn[c]?.[splitBy] ?? '') === val),
       }))
