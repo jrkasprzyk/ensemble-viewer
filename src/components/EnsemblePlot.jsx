@@ -60,7 +60,7 @@ export default function EnsemblePlot({
         line: { width: 1, color },
         opacity: showBands ? 0.25 : 0.55,
         hovertemplate: `<b>${col}</b>` +
-          (categoryVal != null ? `<br>${colorBy}: ${categoryVal}` : '') +
+          Object.entries(labelsByColumn[col] ?? {}).map(([k, v]) => `<br>${k}: ${v}`).join('') +
           `<br>%{x}: %{y:.4g}<extra></extra>`,
         visible: visible ? true : 'legendonly',
         legendgroup: colorBy ? `g-${categoryVal}` : undefined,
