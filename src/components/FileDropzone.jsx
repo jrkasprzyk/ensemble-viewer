@@ -8,6 +8,7 @@ import {
 export default function FileDropzone({ onFile, onSidecar, hasData }) {
   const inputRef = useRef(null)
   const sidecarRef = useRef(null)
+  const mountedRef = useRef(true)
   const [drag, setDrag] = useState(false)
   const [examples, setExamples] = useState([])
   const [loadingExamples, setLoadingExamples] = useState(true)
@@ -15,25 +16,27 @@ export default function FileDropzone({ onFile, onSidecar, hasData }) {
   const [selectedExample, setSelectedExample] = useState('')
 
   useEffect(() => {
-    let mounted = true
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
+  useEffect(() => {
     async function loadExamples() {
       setLoadingExamples(true)
       try {
         const loadedExamples = await fetchExamples()
-        if (mounted) setExamples(loadedExamples)
+        if (mountedRef.current) setExamples(loadedExamples)
       } catch (e) {
         console.error('Failed to load examples manifest', e)
-        if (mounted) setExamples([])
+        if (mountedRef.current) setExamples([])
       } finally {
-        if (mounted) setLoadingExamples(false)
+        if (mountedRef.current) setLoadingExamples(false)
       }
     }
 
     loadExamples()
-    return () => {
-      mounted = false
-    }
   }, [])
 
   function handleFiles(files) {
@@ -50,16 +53,20 @@ export default function FileDropzone({ onFile, onSidecar, hasData }) {
     setLoadingExampleSelection(true)
     try {
       const file = await fetchExampleFile(example.entry)
+      if (!mountedRef.current) return
       if (example.sidecar && onSidecar) {
         const sidecarFile = await fetchExampleSidecar(example.sidecar)
+        if (!mountedRef.current) return
         onSidecar(sidecarFile)
       }
       onFile(file)
     } catch (e) {
       console.error('Failed to load example', e)
     } finally {
-      setSelectedExample('')
-      setLoadingExampleSelection(false)
+      if (mountedRef.current) {
+        setSelectedExample('')
+        setLoadingExampleSelection(false)
+      }
     }
   }
 
