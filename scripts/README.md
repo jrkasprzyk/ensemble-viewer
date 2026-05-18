@@ -185,4 +185,4 @@ If the slot name is not found, `convert` exits with a non-zero code and prints t
 python scripts/test_rdf_parser.py
 ```
 
-Runs 22 tests covering the parser, timestamp normalization, and CLI commands. Sample RDF files used by tests are in `public/rw-sample-data/`.
+Runs the unittest suite covering the parser, timestamp normalization, and CLI commands. Sample RDF files used by tests are in `public/rw-sample-data/`.
