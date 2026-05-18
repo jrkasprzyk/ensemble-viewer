@@ -28,3 +28,30 @@ export async function fetchHostedSample(path = '/sample-data/ensemble.csv') {
   const text = await res.text()
   return new File([text], path.split('/').pop() || 'ensemble-sample.csv', { type: 'text/csv' })
 }
+
+export async function fetchExamples() {
+  const res = await fetch('/examples.json')
+  if (!res.ok) throw new Error(`Failed to load examples manifest (HTTP ${res.status})`)
+  const payload = await res.json()
+  if (!Array.isArray(payload)) throw new Error('Invalid examples manifest format')
+  return payload
+}
+
+export async function fetchExampleFile(entry) {
+  return fetchFileAsUpload(entry)
+}
+
+export async function fetchExampleSidecar(sidecar) {
+  return fetchFileAsUpload(sidecar)
+}
+
+async function fetchFileAsUpload(path) {
+  const res = await fetch(path)
+  if (!res.ok) throw new Error(`Failed to fetch ${path} (HTTP ${res.status})`)
+  const blob = await res.blob()
+  return new File([blob], getFileName(path), { type: blob.type || 'text/csv' })
+}
+
+function getFileName(path) {
+  return path.split('/').pop() || 'example.csv'
+}

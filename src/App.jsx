@@ -255,7 +255,7 @@ function EmptyState() {
           you have.
         </p>
         <p className="text-xs text-muted mt-4 font-mono">
-          Or click the Load sample button above to load a small demo dataset.
+          Or pick an item from Examples above to load a curated demo dataset.
         </p>
       </div>
     </div>
