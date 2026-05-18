@@ -1,15 +1,42 @@
 import Papa from 'papaparse'
 
 /**
+ * Scan a 2-D raw row array and return how many stacked label rows precede the
+ * column header row.
+ *
+ * Strategy: walk from the top; the first row whose first cell looks like a
+ * data value (finite number, Date object, numeric string, or date string) is
+ * the first *data* row at index i.  The row immediately before it (index i-1)
+ * is the column header, so labelRowCount = i - 1.
+ *
+ * Only cell[0] is inspected — label *values* in the remaining cells may be
+ * numeric (e.g. historical years) without affecting detection.
+ *
+ * @param {Array<Array<unknown>>} raw  2-D array from Papa.parse or XLSX.
+ * @returns {number}
+ */
+export function detectLabelRowCount(raw) {
+  for (let i = 0; i < raw.length; i++) {
+    const cell = raw[i][0]
+    if (cell === '' || cell == null) continue
+    // Native number or Date (XLSX parsed types) — definitely a data row.
+    if (typeof cell === 'number' || cell instanceof Date) return i > 0 ? i - 1 : 0
+    const s = String(cell).trim()
+    if (s === '') continue
+    if (Number.isFinite(Number(s))) return i > 0 ? i - 1 : 0
+    if (!isNaN(new Date(s).getTime())) return i > 0 ? i - 1 : 0
+  }
+  return 0
+}
+
+/**
  * Parse a CSV file with optional stacked header rows for labels.
  *
  * Two modes:
- *   - labelRowCount = 0: first row is column names, rest is data.
- *   - labelRowCount > 0: the first N rows are label categories (the first cell
- *     of each row is the category name), the (N+1)th row is column names, and
- *     the rest is data.
+ *   - labelRowCount = null (default): auto-detect from file structure.
+ *   - labelRowCount = N: treat exactly N rows as label rows (0 = none).
  *
- * Example with labelRowCount = 2:
+ * Example with two label rows:
  *   scenario, RCP45,   RCP45,   RCP85,   RCP85      ← label row 1
  *   gcm,      CanESM5, MIROC6,  CanESM5, MIROC6     ← label row 2
  *   year,     run1,    run2,    run3,    run4        ← column header row
@@ -19,33 +46,36 @@ import Papa from 'papaparse'
  * @param {File|{text: () => Promise<string>}} file
  *   A browser File or any object with an async `.text()` method.
  * @param {object} options
- * @param {number} options.labelRowCount  Number of stacked label rows (default 0).
+ * @param {number|null} options.labelRowCount  Label rows above the header (null = auto-detect).
  *
  * @returns {Promise<{
- *   columns:        string[],                               // data column names (excludes index col)
- *   indexColumn:    string,                                 // name of the x-axis column
- *   rows:           object[],                              // one object per data row
- *   labelsByColumn: Record<string, Record<string, string>> // metadata per column
+ *   columns:        string[],
+ *   indexColumn:    string,
+ *   rows:           object[],
+ *   labelsByColumn: Record<string, Record<string, string>>,
+ *   labelRowCount:  number
  * }>}
  */
-export async function parseCsvFile(file, { labelRowCount = 0 } = {}) {
+export async function parseCsvFile(file, { labelRowCount = null } = {}) {
   const text = await file.text()
 
   // Parse the whole file as a 2-D array of raw strings first.
   // We'll re-interpret the header ourselves so we can handle stacked label rows.
   const raw = Papa.parse(text, { skipEmptyLines: true }).data
 
-  if (raw.length < labelRowCount + 1) {
+  const lrc = labelRowCount == null ? detectLabelRowCount(raw) : labelRowCount
+
+  if (raw.length < lrc + 1) {
     throw new Error(
       `CSV has fewer rows than the declared label header rows. ` +
-      `Expected at least ${labelRowCount + 1} row(s), got ${raw.length}.`
+      `Expected at least ${lrc + 1} row(s), got ${raw.length}.`
     )
   }
 
   // Slice the 2-D array into logical sections.
-  const labelRows  = raw.slice(0, labelRowCount)          // [categoryName, val, val, ...]
-  const headerRow  = raw[labelRowCount]                    // [indexName, col1, col2, ...]
-  const dataRows   = raw.slice(labelRowCount + 1)
+  const labelRows  = raw.slice(0, lrc)          // [categoryName, val, val, ...]
+  const headerRow  = raw[lrc]                    // [indexName, col1, col2, ...]
+  const dataRows   = raw.slice(lrc + 1)
 
   const indexColumn = headerRow[0]
   const columns     = headerRow.slice(1)
@@ -95,5 +125,5 @@ export async function parseCsvFile(file, { labelRowCount = 0 } = {}) {
     )
   }
 
-  return { columns, indexColumn, rows, labelsByColumn }
+  return { columns, indexColumn, rows, labelsByColumn, labelRowCount: lrc }
 }

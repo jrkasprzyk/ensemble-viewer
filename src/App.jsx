@@ -38,7 +38,7 @@ export default function App() {
 
   // --- File loading ------------------------------------------------------
 
-  async function loadFile(f, { labelRowCount: lrc = labelRowCount } = {}) {
+  async function loadFile(f, { labelRowCount: lrc = null } = {}) {
     setError(null)
     setStatus(`Parsing ${f.name}…`)
     try {
@@ -51,15 +51,13 @@ export default function App() {
       setRows(parsed.rows)
       setIndexColumn(parsed.indexColumn)
       setIndexType(detectIndexType(parsed.rows, parsed.indexColumn))
-      // Reset colorBy so a stale category from the previous file doesn't persist.
       setColorBy(null)
+      setLabelRowCount(parsed.labelRowCount)
 
-      // If the file had stacked header rows, use those labels immediately.
-      if (lrc > 0 && Object.keys(parsed.labelsByColumn).length) {
+      if (parsed.labelRowCount > 0 && Object.keys(parsed.labelsByColumn).length) {
         setLabelsByColumn(parsed.labelsByColumn)
         setLabelStrategy('headers')
       } else {
-        // Otherwise seed labels from column names with current delimiter.
         setLabelsByColumn(
           parseLabelsFromNames(parsed.columns, {
             delimiter,
