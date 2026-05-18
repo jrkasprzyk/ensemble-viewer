@@ -76,10 +76,18 @@ def _parse_slot(lines: list[str], pos: int, nts: int) -> tuple[dict, int]:
         raise ValueError(f"END_COLUMN not found after position {pos}")
 
     n_values = ec_idx - pos
-    if n_values == 1:
+    slot_type = (slot.get("slot_type") or "").strip().lower()
+    is_series_slot = "series" in slot_type
+    is_scalar_slot = "scalar" in slot_type
+
+    if is_series_slot:
+        slot["scalar"] = False
+    elif is_scalar_slot:
         slot["scalar"] = True
     elif n_values == nts:
         slot["scalar"] = False
+    elif n_values == 1:
+        slot["scalar"] = True
     else:
         import warnings
         warnings.warn(
