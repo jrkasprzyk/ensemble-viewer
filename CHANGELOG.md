@@ -4,11 +4,14 @@ All notable changes to this project will be documented in this file.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 
+Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
+
 ## [Unreleased]
 
 ### Added
+- `LICENSE` — MIT license
 - `README.md` — project overview, quick-start guide, data format reference, command table, and tech stack summary
-- `CONTRIBUTING.md` — local setup, test instructions, project structure guide, PR workflow, and JS gotchas for Python/R contributors
+- `CONTRIBUTING.md` — local setup, test instructions, project structure guide, PR workflow, JS gotchas for Python/R contributors, and license agreement note
 - Vitest test infrastructure (`package.json` scripts: `test`, `test:watch`; `vite.config.js` `test` block)
 - `src/lib/stats.test.js` — 8 tests for `computeGroupStats`: mean, median, percentiles, NaN propagation, empty-column edge cases
 - `src/lib/labels.test.js` — 19 tests for `parseLabelsFromNames`, `summarizeLabels`, `detectIndexType`, `parseSidecarLabels`
@@ -35,3 +38,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 - Label-based filtering and color grouping
 - Sample dataset loader
 - Percentile band overlay (10th–90th with mean/median)
+
+[Unreleased]: https://github.com/jrkasprzyk/ensemble-viewer/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/jrkasprzyk/ensemble-viewer/releases/tag/v0.1.0

@@ -23,7 +23,7 @@ Install [Node.js](https://nodejs.org/) v18 or later. This brings `npm` with it.
 ## Local setup
 
 ```bash
-git clone https://github.com/your-org/ensemble-viewer.git
+git clone https://github.com/jrkasprzyk/ensemble-viewer.git
 cd ensemble-viewer
 npm install        # downloads dependencies into node_modules/
 npm run dev        # starts the dev server at http://localhost:5173
@@ -135,3 +135,9 @@ JavaScript has a few behaviours that surprise people coming from scientific comp
 - **`const` does not mean immutable** — `const arr = []` lets you push to the array; it only prevents reassigning the variable.
 
 The library files (`src/lib/*.js`) have inline comments calling out JS-specific gotchas for non-JavaScript maintainers.
+
+---
+
+## License
+
+By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).
