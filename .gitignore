@@ -159,3 +159,6 @@ tests/__pycache__/
 .coverage
 .coverage.*
 htmlcov/
+
+# VSCode settings
+.vscode/
