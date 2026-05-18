@@ -19,8 +19,18 @@ export default function LabelControls({
   onColorByChange,
   showBands,
   onShowBandsChange,
+  yUnits,
+  onYUnitsChange,
+  splitBy,
+  onSplitByChange,
+  tieCategoryA,
+  tieCategoryB,
+  onTieCategoryAChange,
+  onTieCategoryBChange,
+  tieCategoryOptions,
 }) {
   const categoryNames = useMemo(() => Object.keys(categoryValues), [categoryValues])
+  const tieCategories = tieCategoryOptions || categoryNames
 
   return (
     <div className="flex flex-col gap-3 text-xs">
@@ -45,6 +55,60 @@ export default function LabelControls({
             Pick a category to color by — bands require a grouping.
           </p>
         )}
+        <div className="flex flex-col gap-1">
+          <label className="font-mono uppercase tracking-wider text-[10px] text-muted">
+            Y units (optional)
+          </label>
+          <input
+            type="text"
+            value={yUnits}
+            onChange={(e) => onYUnitsChange(e.target.value)}
+            placeholder="ft"
+            className="px-2 py-1 border border-rule bg-paper font-mono"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="font-mono uppercase tracking-wider text-[10px] text-muted">
+            Multiple plots by
+          </label>
+          <select
+            value={splitBy}
+            onChange={(e) => onSplitByChange(e.target.value)}
+            className="px-2 py-1 border border-rule bg-paper font-mono"
+          >
+            <option value="">Single plot</option>
+            {categoryNames.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="font-mono uppercase tracking-wider text-[10px] text-muted">
+            Tie labels together
+          </label>
+          <div className="grid grid-cols-2 gap-1">
+            <select
+              value={tieCategoryA}
+              onChange={(e) => onTieCategoryAChange(e.target.value)}
+              className="px-2 py-1 border border-rule bg-paper font-mono"
+            >
+              <option value="">None</option>
+              {tieCategories.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+            <select
+              value={tieCategoryB}
+              onChange={(e) => onTieCategoryBChange(e.target.value)}
+              className="px-2 py-1 border border-rule bg-paper font-mono"
+            >
+              <option value="">None</option>
+              {tieCategories.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
       {categoryNames.length === 0 && (

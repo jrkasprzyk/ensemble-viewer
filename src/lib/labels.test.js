@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   parseLabelsFromNames,
   summarizeLabels,
+  tieLabelCategories,
   detectIndexType,
   parseSidecarLabels,
 } from './labels.js'
@@ -81,6 +82,29 @@ describe('summarizeLabels', () => {
 
   it('returns an empty object for empty input', () => {
     expect(summarizeLabels({})).toEqual({})
+  })
+})
+
+// ---------------------------------------------------------------------------
+// tieLabelCategories
+// ---------------------------------------------------------------------------
+describe('tieLabelCategories', () => {
+  it('replaces tied categories with a combined category', () => {
+    const labelsByColumn = {
+      run1: { Year: '1988', 'Percent of Average': '95' },
+      run2: { Year: '1995', 'Percent of Average': '102' },
+    }
+    const result = tieLabelCategories(labelsByColumn, ['Year', 'Percent of Average'])
+    expect(result).toEqual({
+      run1: { 'Year + Percent of Average': '1988 | 95' },
+      run2: { 'Year + Percent of Average': '1995 | 102' },
+    })
+  })
+
+  it('returns input unchanged when fewer than two categories are provided', () => {
+    const labelsByColumn = { run1: { Year: '1988' } }
+    expect(tieLabelCategories(labelsByColumn, ['Year'])).toBe(labelsByColumn)
+    expect(tieLabelCategories(labelsByColumn, [])).toBe(labelsByColumn)
   })
 })
 
