@@ -1,0 +1,2 @@
+# Python 3.9+ required. No third-party packages needed — stdlib only.
+# python_requires>=3.9
