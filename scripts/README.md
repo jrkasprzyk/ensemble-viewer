@@ -94,15 +94,45 @@ date,trace_1,trace_2,trace_3
 2024-01-02,1099.5,1100.5,1098.5
 ```
 
+If scalar slots exist, a sidecar file is also written at `<stem>_labels.csv`.
+
+Example sidecar:
+```
+column,Trace Historical Year,Historical Year Percent of Average
+trace_1,1988.0,95.0
+trace_2,1995.0,102.0
+trace_3,2003.0,88.5
+```
+
 This is the format expected by ensemble-viewer. Load `output.csv` directly.
 
-**Stacked (long) format** — one row per timestep per trace:
+**Stacked-header wide format** — wide data with scalar label rows on top:
 
 ```bash
 python scripts/rdf.py convert path/to/model.rdf \
     --slot "Example Reservoir.Pool Elevation" \
-    --output output_stacked.csv \
+  --output output_stacked_header.csv \
     --format stacked
+```
+
+Output CSV:
+```
+Trace Historical Year,1988.0,1995.0,2003.0
+Historical Year Percent of Average,95.0,102.0,88.5
+date,trace_1,trace_2,trace_3
+2024-01-01,1100.0,1101.0,1098.0
+2024-01-02,1099.5,1100.5,1097.5
+```
+
+`--format stacked` requires scalar slots. If no scalar slots exist, the command exits with an error.
+
+**Long format** — one row per timestep per trace:
+
+```bash
+python scripts/rdf.py convert path/to/model.rdf \
+  --slot "Example Reservoir.Pool Elevation" \
+  --output output_long.csv \
+  --format long
 ```
 
 Output CSV:
@@ -112,6 +142,17 @@ date,trace,value
 2024-01-01,trace_2,1101.0
 2024-01-01,trace_3,1099.0
 2024-01-02,trace_1,1099.5
+```
+
+Long format is available for downstream analysis, but it is not directly compatible with ensemble-viewer input. Use wide or stacked-header wide for viewer loading.
+
+**Enriched long format** — long format with scalar label columns appended:
+
+```bash
+python scripts/rdf.py convert path/to/model.rdf \
+  --slot "Example Reservoir.Pool Elevation" \
+  --output output_enriched.csv \
+  --format enriched
 ```
 
 ### Built-in help
@@ -132,7 +173,7 @@ If the slot name is not found, `convert` exits with a non-zero code and prints t
 
 ## Known limitations
 
-- **Scalar slots** (1 value per run, not per timestep): exported with a warning. The output CSV will have 1 data row instead of one row per timestep.
+- **Scalar slots** (1 value per run, not per timestep): exporting a scalar slot as the data slot produces one data row.
 - **Time notation**: RiverWare uses `YYYY-M-D 24:00` (end-of-day). Normalized to `YYYY-MM-DD` ISO 8601 in all output.
 - **Table/periodic slots**: not supported. Parser will warn and skip unsupported slot types.
 - **Monthly/annual timesteps**: `24:00` normalization assumes daily steps. Other timestep units may require manual date interpretation.

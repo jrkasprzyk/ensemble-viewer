@@ -44,7 +44,8 @@ for /f "usebackq delims=" %%S in (`python "%SCRIPTS%" slots "%TRACES%" --series-
 )
 
 echo ============================================================
-echo 4. Convert all slots in sample_traces.rdf (stacked format)
+echo 4. Convert all slots in sample_traces.rdf (stacked-header wide format)
+echo    Output includes scalar label rows above wide data columns.
 echo ============================================================
 for /f "usebackq delims=" %%S in (`python "%SCRIPTS%" slots "%TRACES%" --series-only`) do (
     set "SLOT=%%S"
@@ -57,6 +58,23 @@ for /f "usebackq delims=" %%S in (`python "%SCRIPTS%" slots "%TRACES%" --series-
     echo   slot : !SLOT!
     echo   out  : !OUT!
     python "%SCRIPTS%" convert "%TRACES%" --slot "!SLOT!" --output "!OUT!" --format stacked
+    echo.
+)
+
+echo ============================================================
+echo 5. Convert all slots in sample_traces.rdf (long format)
+echo ============================================================
+for /f "usebackq delims=" %%S in (`python "%SCRIPTS%" slots "%TRACES%" --series-only`) do (
+    set "SLOT=%%S"
+
+    set "SAFE=%%S"
+    set "SAFE=!SAFE: =_!"
+    set "SAFE=!SAFE:.=_!"
+
+    set "OUT=%RDF%output_!SAFE!_long.csv"
+    echo   slot : !SLOT!
+    echo   out  : !OUT!
+    python "%SCRIPTS%" convert "%TRACES%" --slot "!SLOT!" --output "!OUT!" --format long
     echo.
 )
 

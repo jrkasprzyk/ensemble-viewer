@@ -7,6 +7,7 @@ Usage:
     python scripts/rdf.py convert <file.rdf> --slot "ObjectName.SlotName" --output out.csv
     python scripts/rdf.py convert <file.rdf> --slot "ObjectName.SlotName" --output out.csv --format wide
     python scripts/rdf.py convert <file.rdf> --slot "ObjectName.SlotName" --output out.csv --format stacked
+    python scripts/rdf.py convert <file.rdf> --slot "ObjectName.SlotName" --output out.csv --format long
     python scripts/rdf.py convert <file.rdf> --slot "ObjectName.SlotName" --output out.csv --format enriched
 """
 
@@ -21,6 +22,18 @@ from pathlib import Path
 # Allow running as a script directly without install
 sys.path.insert(0, str(Path(__file__).parent))
 from rdf_parser import list_slots, parse_rdf
+
+
+def _scalar_keys(runs: list[dict]) -> list[str]:
+    first_slots = runs[0]["slots"]
+    return [k for k, v in first_slots.items() if v.get("scalar")]
+
+
+def _stacked_date_col_name(ref_times: list[str]) -> str:
+    # Annual data in sample files is represented by Jan 1 timestamps.
+    if ref_times and all(t.endswith("-01-01") for t in ref_times):
+        return "year"
+    return "date"
 
 
 def cmd_info(args: argparse.Namespace) -> None:
@@ -99,6 +112,7 @@ def cmd_convert(args: argparse.Namespace) -> None:
     out_path = Path(args.output)
 
     fmt = args.format if args.format is not None else "wide"
+    scalar_keys = _scalar_keys(runs)
 
     if fmt == "wide":
         _write_wide(runs, slot_key, ref_times, out_path)
@@ -107,7 +121,17 @@ def cmd_convert(args: argparse.Namespace) -> None:
         if sidecar_path:
             print(f"Wrote {sidecar_path}")
     elif fmt == "stacked":
-        _write_stacked(runs, slot_key, ref_times, out_path)
+        if not scalar_keys:
+            print(
+                "Format 'stacked' requires scalar slots for label header rows. "
+                "No scalar slots were found.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        _write_stacked_header(runs, slot_key, ref_times, out_path, scalar_keys)
+        print(f"Wrote {out_path}")
+    elif fmt == "long":
+        _write_long(runs, slot_key, ref_times, out_path)
         print(f"Wrote {out_path}")
     else:  # enriched
         _write_enriched(runs, slot_key, ref_times, out_path)
@@ -140,7 +164,7 @@ def _write_wide(
             writer.writerow(row)
 
 
-def _write_stacked(
+def _write_long(
     runs: list[dict], slot_key: str, ref_times: list[str], out_path: Path
 ) -> None:
     with out_path.open("w", newline="", encoding="utf-8") as f:
@@ -154,12 +178,45 @@ def _write_stacked(
                 writer.writerow([date, trace, val])
 
 
+def _write_stacked_header(
+    runs: list[dict],
+    slot_key: str,
+    ref_times: list[str],
+    out_path: Path,
+    scalar_keys: list[str],
+) -> None:
+    trace_ids = [_trace_id(r) for r in runs]
+    date_col = _stacked_date_col_name(ref_times)
+
+    with out_path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+
+        for sk in scalar_keys:
+            label_name = sk.split(".", 1)[1] if "." in sk else sk
+            label_vals = []
+            for run in runs:
+                vals = run["slots"][sk]["values"]
+                label_vals.append(vals[0] if vals else "")
+            writer.writerow([label_name] + label_vals)
+
+        writer.writerow([date_col] + trace_ids)
+
+        first_values = runs[0]["slots"][slot_key]["values"]
+        n_rows = len(first_values)
+        for row_i in range(n_rows):
+            date = ref_times[row_i] if row_i < len(ref_times) else ""
+            row = [date]
+            for run in runs:
+                vals = run["slots"][slot_key]["values"]
+                row.append(vals[row_i] if row_i < len(vals) else "")
+            writer.writerow(row)
+
+
 def _write_enriched(
     runs: list[dict], slot_key: str, ref_times: list[str], out_path: Path
 ) -> None:
     """Stacked format with scalar slot values appended as label columns."""
-    first_slots = runs[0]["slots"]
-    scalar_keys = [k for k, v in first_slots.items() if v.get("scalar")]
+    scalar_keys = _scalar_keys(runs)
     category_names = [k.split(".", 1)[1] if "." in k else k for k in scalar_keys]
 
     with out_path.open("w", newline="", encoding="utf-8") as f:
@@ -180,8 +237,7 @@ def _write_sidecar(runs: list[dict], out_path: Path) -> Path | None:
 
     Returns the sidecar path, or None if no scalar slots exist.
     """
-    first_slots = runs[0]["slots"]
-    scalar_keys = [k for k, v in first_slots.items() if v.get("scalar")]
+    scalar_keys = _scalar_keys(runs)
     if not scalar_keys:
         return None
 
@@ -240,11 +296,12 @@ def main() -> None:
     p_conv.add_argument("--output", required=True, metavar="PATH", help="Output CSV path.")
     p_conv.add_argument(
         "--format",
-        choices=["wide", "stacked", "enriched"],
+        choices=["wide", "stacked", "long", "enriched"],
         default=None,
         help=(
-            "Output format. Default: enriched (stacked + scalar label columns) when scalar "
-            "slots exist, wide otherwise. Options: wide, stacked, enriched."
+            "Output format. Default: wide. "
+            "Options: wide (wide + optional sidecar), stacked (wide with scalar "
+            "label header rows), long (date/trace/value), enriched (long + labels)."
         ),
     )
 
