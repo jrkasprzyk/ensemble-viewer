@@ -13,6 +13,8 @@ import {
   detectIndexType,
 } from './lib/labels.js'
 
+const EMPTY_LABEL = '⟨empty⟩'
+
 export default function App() {
   // Raw dataset
   const [file, setFile] = useState(null)           // the File object, kept so we can re-parse
@@ -111,7 +113,8 @@ export default function App() {
   const baseCategoryValues = useMemo(() => summarizeLabels(labelsByColumn), [labelsByColumn])
 
   const effectiveLabelsByColumn = useMemo(() => {
-    if (!tieCategoryA || !tieCategoryB || tieCategoryA === tieCategoryB) return labelsByColumn
+    if (!tieCategoryA || !tieCategoryB) return labelsByColumn
+    if (tieCategoryA === tieCategoryB) return labelsByColumn
     return tieLabelCategories(labelsByColumn, [tieCategoryA, tieCategoryB])
   }, [labelsByColumn, tieCategoryA, tieCategoryB])
 
@@ -160,8 +163,8 @@ export default function App() {
     return categoryValues[splitBy]
       .filter((val) => activeValues.has(val))
       .map((val) => ({
-        key: val || 'empty',
-        title: `${splitBy}: ${val || '⟨empty⟩'}`,
+        key: val || EMPTY_LABEL,
+        title: `${splitBy}: ${val || EMPTY_LABEL}`,
         columns: columns.filter((c) => (effectiveLabelsByColumn[c]?.[splitBy] ?? '') === val),
       }))
   }, [splitBy, categoryValues, activeByCategory, columns, effectiveLabelsByColumn])
