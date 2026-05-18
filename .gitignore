@@ -145,3 +145,17 @@ vite.config.ts.timestamp-*
 
 # Private data
 private/
+
+# Python (scripts/tests)
+scripts/__pycache__/
+tests/__pycache__/
+*.py[cod]
+*$py.class
+
+# Python tooling/test artifacts
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
