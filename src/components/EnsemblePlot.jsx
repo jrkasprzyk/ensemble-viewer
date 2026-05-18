@@ -37,6 +37,7 @@ export default function EnsemblePlot({
     if (!rows || !rows.length) return { traces: [], layout: {} }
 
     const x = rows.map((r) => r[indexColumn])
+    const yUnitSuffix = yUnits ? ` ${yUnits}` : ''
 
     // Color assignment
     let colorMap = {}
@@ -62,7 +63,7 @@ export default function EnsemblePlot({
         opacity: showBands ? 0.25 : 0.55,
         hovertemplate: `<b>${col}</b>` +
           Object.entries(labelsByColumn[col] ?? {}).map(([k, v]) => `<br>${k}: ${v}`).join('') +
-          `<br>%{x}: %{y:.4g}${yUnits ? ` ${yUnits}` : ''}<extra></extra>`,
+          `<br>%{x}: %{y:.4g}${yUnitSuffix}<extra></extra>`,
         visible: visible ? true : 'legendonly',
         legendgroup: colorBy ? `g-${categoryVal}` : undefined,
         showlegend: false, // the side panel is the primary filter; Plotly legend would be 500 items
@@ -121,7 +122,7 @@ export default function EnsemblePlot({
           name: `${val} mean`,
           line: { width: 2.5, color },
           legendgroup: `band-${val}`,
-          hovertemplate: `<b>${val} mean</b><br>%{x}: %{y:.4g}${yUnits ? ` ${yUnits}` : ''}<extra></extra>`,
+          hovertemplate: `<b>${val} mean</b><br>%{x}: %{y:.4g}${yUnitSuffix}<extra></extra>`,
         })
       }
     }
@@ -145,7 +146,7 @@ export default function EnsemblePlot({
         linecolor: '#1a1a1a',
         ticks: 'outside',
         tickcolor: '#1a1a1a',
-        ticksuffix: yUnits ? ` ${yUnits}` : '',
+        ticksuffix: yUnitSuffix,
         zeroline: false,
       },
       showlegend: showBands && !!colorBy,

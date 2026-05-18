@@ -30,7 +30,6 @@ export default function LabelControls({
   tieCategoryOptions,
 }) {
   const categoryNames = useMemo(() => Object.keys(categoryValues), [categoryValues])
-  const tieCategories = tieCategoryOptions
 
   return (
     <div className="flex flex-col gap-3 text-xs">
@@ -93,7 +92,7 @@ export default function LabelControls({
               className="px-2 py-1 border border-rule bg-paper font-mono"
             >
               <option value="">None</option>
-              {tieCategories.map((cat) => (
+              {tieCategoryOptions.map((cat) => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
@@ -103,7 +102,7 @@ export default function LabelControls({
               className="px-2 py-1 border border-rule bg-paper font-mono"
             >
               <option value="">None</option>
-              {tieCategories.map((cat) => (
+              {tieCategoryOptions.map((cat) => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>

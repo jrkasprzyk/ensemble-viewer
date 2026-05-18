@@ -161,7 +161,7 @@ export default function App() {
     return categoryValues[splitBy]
       .filter((val) => activeValues.has(val))
       .map((val) => ({
-        key: `${splitBy}:${val}`,
+        key: `${splitBy}:${JSON.stringify(val)}`,
         title: `${splitBy}: ${val || EMPTY_LABEL}`,
         columns: columns.filter((c) => (effectiveLabelsByColumn[c]?.[splitBy] ?? '') === val),
       }))
