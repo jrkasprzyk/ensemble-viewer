@@ -195,7 +195,7 @@ class TestCLIConvert(unittest.TestCase):
         finally:
             os.unlink(out)
 
-    def test_stacked_csv_dimensions(self):
+    def test_long_csv_dimensions(self):
         import tempfile
 
         with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as f:
