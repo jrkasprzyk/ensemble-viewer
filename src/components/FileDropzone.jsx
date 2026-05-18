@@ -104,10 +104,13 @@ export default function FileDropzone({ onFile, onSidecar, hasData }) {
             value={selectedExample}
             onChange={(e) => {
               const value = e.target.value
-              setSelectedExample(value)
-              handleExampleChange(value)
+              if (value) {
+                setSelectedExample('')
+                handleExampleChange(value)
+              }
             }}
             disabled={loadingExamples || loadingExampleSelection || !examples.length}
+            aria-label="Examples"
             className="px-2 py-1.5 text-[11px] font-mono uppercase tracking-wider border border-rule bg-paper text-ink disabled:opacity-50"
           >
             <option value="">

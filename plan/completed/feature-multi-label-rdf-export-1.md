@@ -4,13 +4,13 @@ version: 1.0
 date_created: 2026-05-18
 last_updated: 2026-05-18
 owner: Joseph Kasprzyk
-status: 'Planned'
+status: 'Completed'
 tags: [feature, bug, data, cli, python]
 ---
 
 # Introduction
 
-![Status: Planned](https://img.shields.io/badge/status-Planned-blue)
+![Status: Completed](https://img.shields.io/badge/status-Completed-green)
 
 Two bugs / gaps exist in `scripts/rdf.py` regarding multi-label ensemble output:
 

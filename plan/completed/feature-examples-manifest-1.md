@@ -4,13 +4,13 @@ version: 1.0
 date_created: 2026-05-18
 last_updated: 2026-05-18
 owner: Joseph Kasprzyk
-status: 'Planned'
+status: 'Completed'
 tags: [feature, ux, data]
 ---
 
 # Introduction
 
-![Status: Planned](https://img.shields.io/badge/status-Planned-blue)
+![Status: Completed](https://img.shields.io/badge/status-Completed-green)
 
 Replace the single "Load sample" button with an "Examples" dropdown populated from a curated `public/examples.json` manifest. Pattern mirrors ArborView (`public/data/manifest.json` + `fetchJson` + `<select>`). A curated subset of data from the three dataset groups in `public/` become accessible without a local file browse.
 
