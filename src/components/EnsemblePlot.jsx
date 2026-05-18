@@ -31,13 +31,13 @@ export default function EnsemblePlot({
   visibleColumns,   // Set<string> of columns currently shown
   showBands,        // boolean — draw percentile bands per group
   indexType,        // 'datetime' | 'numeric'
-  yUnits,           // optional units suffix for y values
+  xAxisLabel,       // optional x-axis label override
+  yAxisLabel,       // optional y-axis label
 }) {
   const { traces, layout } = useMemo(() => {
     if (!rows || !rows.length) return { traces: [], layout: {} }
 
     const x = rows.map((r) => r[indexColumn])
-    const yUnitSuffix = yUnits ? ` ${yUnits}` : ''
 
     // Color assignment
     let colorMap = {}
@@ -63,7 +63,7 @@ export default function EnsemblePlot({
         opacity: showBands ? 0.25 : 0.55,
         hovertemplate: `<b>${col}</b>` +
           Object.entries(labelsByColumn[col] ?? {}).map(([k, v]) => `<br>${k}: ${v}`).join('') +
-          `<br>%{x}: %{y:.4g}${yUnitSuffix}<extra></extra>`,
+          `<br>%{x}: %{y:.4g}<extra></extra>`,
         visible: visible ? true : 'legendonly',
         legendgroup: colorBy ? `g-${categoryVal}` : undefined,
         showlegend: false, // the side panel is the primary filter; Plotly legend would be 500 items
@@ -122,7 +122,7 @@ export default function EnsemblePlot({
           name: `${val} mean`,
           line: { width: 2.5, color },
           legendgroup: `band-${val}`,
-          hovertemplate: `<b>${val} mean</b><br>%{x}: %{y:.4g}${yUnitSuffix}<extra></extra>`,
+          hovertemplate: `<b>${val} mean</b><br>%{x}: %{y:.4g}<extra></extra>`,
         })
       }
     }
@@ -139,14 +139,14 @@ export default function EnsemblePlot({
         linecolor: '#1a1a1a',
         ticks: 'outside',
         tickcolor: '#1a1a1a',
-        title: { text: indexColumn, standoff: 8 },
+        title: { text: xAxisLabel || indexColumn, standoff: 8 },
       },
       yaxis: {
         gridcolor: '#e6e3db',
         linecolor: '#1a1a1a',
         ticks: 'outside',
         tickcolor: '#1a1a1a',
-        ticksuffix: yUnitSuffix,
+        title: yAxisLabel ? { text: yAxisLabel, standoff: 8 } : undefined,
         zeroline: false,
       },
       showlegend: showBands && !!colorBy,
@@ -160,7 +160,7 @@ export default function EnsemblePlot({
     }
 
     return { traces, layout }
-  }, [rows, indexColumn, columns, labelsByColumn, colorBy, visibleColumns, showBands, indexType, yUnits])
+  }, [rows, indexColumn, columns, labelsByColumn, colorBy, visibleColumns, showBands, indexType, xAxisLabel, yAxisLabel])
 
   return (
     <Plot

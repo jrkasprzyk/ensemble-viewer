@@ -19,8 +19,10 @@ export default function LabelControls({
   onColorByChange,
   showBands,
   onShowBandsChange,
-  yUnits,
-  onYUnitsChange,
+  xAxisLabel,
+  yAxisLabel,
+  onXAxisLabelChange,
+  onYAxisLabelChange,
   splitBy,
   onSplitByChange,
   tieCategoryA,
@@ -56,13 +58,25 @@ export default function LabelControls({
         )}
         <div className="flex flex-col gap-1">
           <label className="font-mono uppercase tracking-wider text-[10px] text-muted">
-            Y units (optional)
+            X axis label (optional)
           </label>
           <input
             type="text"
-            value={yUnits}
-            onChange={(e) => onYUnitsChange(e.target.value)}
-            placeholder="ft"
+            value={xAxisLabel}
+            onChange={(e) => onXAxisLabelChange(e.target.value)}
+            placeholder="year"
+            className="px-2 py-1 border border-rule bg-paper font-mono"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="font-mono uppercase tracking-wider text-[10px] text-muted">
+            Y axis label (optional)
+          </label>
+          <input
+            type="text"
+            value={yAxisLabel}
+            onChange={(e) => onYAxisLabelChange(e.target.value)}
+            placeholder="Pool Elevation (ft)"
             className="px-2 py-1 border border-rule bg-paper font-mono"
           />
         </div>

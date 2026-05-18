@@ -34,7 +34,8 @@ export default function App() {
   const [activeByCategory, setActiveByCategory] = useState({})
   const [colorBy, setColorBy] = useState(null)
   const [showBands, setShowBands] = useState(false)
-  const [yUnits, setYUnits] = useState('')
+  const [xAxisLabel, setXAxisLabel] = useState('')
+  const [yAxisLabel, setYAxisLabel] = useState('')
   const [splitBy, setSplitBy] = useState('')
   const [tieCategoryA, setTieCategoryA] = useState('')
   const [tieCategoryB, setTieCategoryB] = useState('')
@@ -240,8 +241,10 @@ export default function App() {
               onColorByChange={setColorBy}
               showBands={showBands}
               onShowBandsChange={setShowBands}
-              yUnits={yUnits}
-              onYUnitsChange={setYUnits}
+              xAxisLabel={xAxisLabel}
+              yAxisLabel={yAxisLabel}
+              onXAxisLabelChange={setXAxisLabel}
+              onYAxisLabelChange={setYAxisLabel}
               splitBy={splitBy}
               onSplitByChange={setSplitBy}
               tieCategoryA={tieCategoryA}
@@ -282,7 +285,8 @@ export default function App() {
                         visibleColumns={visibleColumns}
                         showBands={showBands}
                         indexType={indexType}
-                        yUnits={yUnits}
+                        xAxisLabel={xAxisLabel}
+                        yAxisLabel={yAxisLabel}
                       />
                     </div>
                   </div>
