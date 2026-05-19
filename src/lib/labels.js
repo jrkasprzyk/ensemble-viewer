@@ -139,7 +139,11 @@ export function tieLabelCategories(labelsByColumn, categories = []) {
 
   for (const [col, labels] of Object.entries(labelsByColumn)) {
     const nextLabels = { ...(labels || {}) }
-    const tiedValue = cats.map((cat) => nextLabels[cat] ?? '').join(' | ')
+    if (cats.some((cat) => !(cat in nextLabels))) {
+      out[col] = labels
+      continue
+    }
+    const tiedValue = cats.map((cat) => nextLabels[cat]).join(' | ')
 
     for (const cat of cats) delete nextLabels[cat]
     nextLabels[tiedName] = tiedValue

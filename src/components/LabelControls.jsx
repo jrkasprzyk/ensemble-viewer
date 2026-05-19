@@ -107,7 +107,7 @@ export default function LabelControls({
             >
               <option value="">None</option>
               {tieCategoryOptions.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option key={cat} value={cat} disabled={cat === tieCategoryB}>{cat}</option>
               ))}
             </select>
             <select
@@ -117,7 +117,7 @@ export default function LabelControls({
             >
               <option value="">None</option>
               {tieCategoryOptions.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option key={cat} value={cat} disabled={cat === tieCategoryA}>{cat}</option>
               ))}
             </select>
           </div>

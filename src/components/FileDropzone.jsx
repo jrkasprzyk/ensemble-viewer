@@ -10,17 +10,47 @@ export default function FileDropzone({ onFile, onSidecar, hasData }) {
   const sidecarRef = useRef(null)
   const mountedRef = useRef(true)
   const [drag, setDrag] = useState(false)
+  const dragCounterRef = useRef(0)
   const [examples, setExamples] = useState([])
   const [loadingExamples, setLoadingExamples] = useState(true)
   const [loadingExampleSelection, setLoadingExampleSelection] = useState(false)
   const [selectedExample, setSelectedExample] = useState('')
+  const [loadError, setLoadError] = useState(null)
 
   useEffect(() => {
-    mountedRef.current = true
-    return () => {
-      mountedRef.current = false
-    }
+    return () => { mountedRef.current = false }
   }, [])
+
+  useEffect(() => {
+    function onDragEnter(e) {
+      e.preventDefault()
+      dragCounterRef.current++
+      if (dragCounterRef.current === 1) setDrag(true)
+    }
+    function onDragOver(e) { e.preventDefault() }
+    function onDragLeave(e) {
+      e.preventDefault()
+      dragCounterRef.current--
+      if (dragCounterRef.current === 0) setDrag(false)
+    }
+    function onDrop(e) {
+      e.preventDefault()
+      dragCounterRef.current = 0
+      setDrag(false)
+      handleFiles(e.dataTransfer.files)
+    }
+
+    window.addEventListener('dragenter', onDragEnter)
+    window.addEventListener('dragover', onDragOver)
+    window.addEventListener('dragleave', onDragLeave)
+    window.addEventListener('drop', onDrop)
+    return () => {
+      window.removeEventListener('dragenter', onDragEnter)
+      window.removeEventListener('dragover', onDragOver)
+      window.removeEventListener('dragleave', onDragLeave)
+      window.removeEventListener('drop', onDrop)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     async function loadExamples() {
@@ -51,6 +81,7 @@ export default function FileDropzone({ onFile, onSidecar, hasData }) {
     if (!example?.entry) return
 
     setLoadingExampleSelection(true)
+    setLoadError(null)
     try {
       const file = await fetchExampleFile(example.entry)
       if (!mountedRef.current) return
@@ -62,6 +93,7 @@ export default function FileDropzone({ onFile, onSidecar, hasData }) {
       onFile(file)
     } catch (e) {
       console.error('Failed to load example', e)
+      if (mountedRef.current) setLoadError(e.message || String(e))
     } finally {
       if (mountedRef.current) {
         setSelectedExample('')
@@ -72,13 +104,6 @@ export default function FileDropzone({ onFile, onSidecar, hasData }) {
 
   return (
     <div
-      onDragOver={(e) => { e.preventDefault(); setDrag(true) }}
-      onDragLeave={() => setDrag(false)}
-      onDrop={(e) => {
-        e.preventDefault()
-        setDrag(false)
-        handleFiles(e.dataTransfer.files)
-      }}
       className={`border border-dashed rounded-sm px-4 py-3 text-xs transition-colors ${
         drag ? 'border-accent bg-accent/5' : 'border-rule bg-paper'
       }`}
@@ -139,6 +164,9 @@ export default function FileDropzone({ onFile, onSidecar, hasData }) {
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
       />
+      {loadError && (
+        <p className="mt-2 text-[11px] text-red-600 font-mono">{loadError}</p>
+      )}
       {onSidecar && (
         <div className="mt-2 pt-2 border-t border-rule flex items-center justify-between gap-3">
           <span className="font-mono uppercase tracking-wider text-[10px] text-muted">

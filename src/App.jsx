@@ -136,7 +136,9 @@ export default function App() {
     if (splitBy && !categoryValues[splitBy]) {
       setSplitBy('')
     }
-  }, [categoryValues, colorBy, splitBy])
+    if (tieCategoryA && !baseCategoryValues[tieCategoryA]) setTieCategoryA('')
+    if (tieCategoryB && !baseCategoryValues[tieCategoryB]) setTieCategoryB('')
+  }, [categoryValues, baseCategoryValues, colorBy, splitBy, tieCategoryA, tieCategoryB])
 
   // Compute which columns are currently visible given the filters
   const visibleColumns = useMemo(() => {
@@ -164,7 +166,7 @@ export default function App() {
       .map((val) => ({
         key: `${splitBy}:${JSON.stringify(val)}`,
         title: `${splitBy}: ${val || EMPTY_LABEL}`,
-        columns: columns.filter((c) => (effectiveLabelsByColumn[c]?.[splitBy] ?? '') === val),
+        columns: columns.filter((c) => visibleColumns.has(c) && (effectiveLabelsByColumn[c]?.[splitBy] ?? '') === val),
       }))
   }, [splitBy, categoryValues, activeByCategory, columns, effectiveLabelsByColumn])
 
