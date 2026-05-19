@@ -8,6 +8,7 @@ A browser-based tool for visualising large ensemble timeseries datasets. Drop in
 - **Flexible labelling** — stacked header rows, delimiter-separated column names, or a sidecar label CSV
 - **High-performance rendering** — Plotly WebGL (`scattergl`) handles 500+ columns × thousands of timesteps smoothly
 - **Interactive filtering** — category-based trace filtering and colour grouping
+- **Custom plot display** — optional axis label overrides, label tying, and multi-panel split views
 - **Summary statistics** — 10th/90th percentile band with mean/median per group
 - **Colourblind-safe** — Okabe-Ito palette used throughout
 - **Built-in demo** — load sample data with one click, no file needed

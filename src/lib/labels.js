@@ -119,6 +119,41 @@ export function summarizeLabels(labelsByColumn) {
 }
 
 /**
+ * Combine multiple categories into a single tied category.
+ *
+ * Example:
+ *   categories ['year', 'percent']
+ *   values { year: '1988', percent: '95' }
+ *   -> new category "year + percent" with value "1988 | 95"
+ *
+ * @param {Record<string, Record<string, string>>} labelsByColumn
+ * @param {string[]} categories
+ * @returns {Record<string, Record<string, string>>}
+ */
+export function tieLabelCategories(labelsByColumn, categories = []) {
+  const cats = [...new Set(categories.filter(Boolean))]
+  if (cats.length < 2) return labelsByColumn
+
+  const tiedName = cats.join(' + ')
+  const out = {}
+
+  for (const [col, labels] of Object.entries(labelsByColumn)) {
+    const nextLabels = { ...(labels || {}) }
+    if (cats.some((cat) => !(cat in nextLabels))) {
+      out[col] = labels
+      continue
+    }
+    const tiedValue = cats.map((cat) => nextLabels[cat]).join(' | ')
+
+    for (const cat of cats) delete nextLabels[cat]
+    nextLabels[tiedName] = tiedValue
+    out[col] = nextLabels
+  }
+
+  return out
+}
+
+/**
  * Auto-detect whether the index column holds dates or plain numbers.
  * Returns 'datetime' | 'numeric'.
  *
