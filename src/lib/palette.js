@@ -40,7 +40,12 @@ import chroma from 'chroma-js'
  */
 export function buildSequentialColorMap(values, scale = 'YlGnBu') {
   if (!values.length) return {}
-  const colors = chroma.scale(scale).colors(values.length)
+  // Pad 15% off the light end of YlGnBu to avoid near-white (#ffffd9) on light backgrounds.
+  // Other scales passed explicitly are used as-is.
+  const chromaScale = scale === 'YlGnBu'
+    ? chroma.scale(scale).padding([0.15, 0])
+    : chroma.scale(scale)
+  const colors = chromaScale.colors(values.length)
   const map = {}
   values.forEach((v, i) => { map[v] = colors[i] })
   return map

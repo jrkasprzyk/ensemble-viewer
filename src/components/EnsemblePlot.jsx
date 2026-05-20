@@ -49,7 +49,7 @@ export default function EnsemblePlot({
     for (const col of columns) {
       const visible = visibleColumns.has(col)
       const categoryVal = colorBy ? labelsByColumn[col]?.[colorBy] ?? '' : null
-      const color = colorBy ? resolvedColorMap[categoryVal] : NEUTRAL_GRAY
+      const color = colorBy ? (resolvedColorMap[categoryVal] ?? NEUTRAL_GRAY) : NEUTRAL_GRAY
       traces.push({
         type: 'scattergl',
         mode: 'lines',
@@ -61,7 +61,7 @@ export default function EnsemblePlot({
         hovertemplate: `<b>${col}</b>` +
           Object.entries(labelsByColumn[col] ?? {}).map(([k, v]) => `<br>${k}: ${v}`).join('') +
           `<br>%{x}: %{y:.4g}<extra></extra>`,
-        visible: visible ? true : 'legendonly',
+        visible: visible ? true : false,
         legendgroup: colorBy ? `g-${categoryVal}` : undefined,
         showlegend: false, // the side panel is the primary filter; Plotly legend would be 500 items
       })

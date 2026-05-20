@@ -198,11 +198,18 @@ export default function LabelControls({
       {categoryNames.map((cat) => {
         const rawValues = categoryValues[cat]
         const active = activeByCategory[cat] || new Set()
-        const values = cat === sortCategory
+        const isSortTarget = cat === sortCategory || cat.split(' + ').includes(sortCategory)
+        const sortKeyIndex = isSortTarget && cat !== sortCategory
+          ? cat.split(' + ').indexOf(sortCategory)
+          : -1
+        const values = isSortTarget
           ? [...rawValues].sort((a, b) => {
-              const isTied = a.includes(' | ')
-              const ka = parseFiniteLabelNumber(isTied ? a.split(' | ')[0] : a)
-              const kb = parseFiniteLabelNumber(isTied ? b.split(' | ')[0] : b)
+              const parts_a = a.split(' | ')
+              const parts_b = b.split(' | ')
+              const raw_a = sortKeyIndex >= 0 ? parts_a[sortKeyIndex] : (a.includes(' | ') ? parts_a[0] : a)
+              const raw_b = sortKeyIndex >= 0 ? parts_b[sortKeyIndex] : (b.includes(' | ') ? parts_b[0] : b)
+              const ka = parseFiniteLabelNumber(raw_a)
+              const kb = parseFiniteLabelNumber(raw_b)
               if (ka !== null && kb !== null) return ka - kb
               if (ka !== null) return -1
               if (kb !== null) return 1
