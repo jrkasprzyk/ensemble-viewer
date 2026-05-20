@@ -5,7 +5,7 @@ import Plotly from 'plotly.js-dist-min'
 const createPlotlyComponent = createPlotlyFactory?.default ?? createPlotlyFactory
 const PlotlyLib = Plotly?.default ?? Plotly
 const Plot = createPlotlyComponent(PlotlyLib)
-import { buildColorMap, NEUTRAL_GRAY } from '../lib/palette.js'
+import { NEUTRAL_GRAY } from '../lib/palette.js'
 import { computeGroupStats } from '../lib/stats.js'
 
 /**
@@ -28,6 +28,7 @@ export default function EnsemblePlot({
   columns,
   labelsByColumn,
   colorBy,          // category name to color by, or null for neutral
+  colorMap,         // pre-built { value → hex } map from App
   visibleColumns,   // Set<string> of columns currently shown
   showBands,        // boolean — draw percentile bands per group
   indexType,        // 'datetime' | 'numeric'
@@ -39,12 +40,8 @@ export default function EnsemblePlot({
 
     const x = rows.map((r) => r[indexColumn])
 
-    // Color assignment
-    let colorMap = {}
-    if (colorBy) {
-      const values = [...new Set(columns.map((c) => labelsByColumn[c]?.[colorBy] ?? ''))].sort()
-      colorMap = buildColorMap(values)
-    }
+    // Color map provided by App (single source of truth)
+    const resolvedColorMap = colorMap ?? {}
 
     const traces = []
 
@@ -52,7 +49,7 @@ export default function EnsemblePlot({
     for (const col of columns) {
       const visible = visibleColumns.has(col)
       const categoryVal = colorBy ? labelsByColumn[col]?.[colorBy] ?? '' : null
-      const color = colorBy ? colorMap[categoryVal] : NEUTRAL_GRAY
+      const color = colorBy ? resolvedColorMap[categoryVal] : NEUTRAL_GRAY
       traces.push({
         type: 'scattergl',
         mode: 'lines',
@@ -81,7 +78,7 @@ export default function EnsemblePlot({
       for (const [val, groupCols] of Object.entries(groups)) {
         if (groupCols.length < 2) continue // band of one is just the line
         const { mean, percentiles } = computeGroupStats(rows, indexColumn, groupCols, [0.1, 0.5, 0.9])
-        const color = colorMap[val] || NEUTRAL_GRAY
+        const color = resolvedColorMap[val] || NEUTRAL_GRAY
         const rgba = hexToRgba(color, 0.18)
 
         // Lower bound — invisible line used only as the bottom anchor for the fill.
@@ -160,7 +157,7 @@ export default function EnsemblePlot({
     }
 
     return { traces, layout }
-  }, [rows, indexColumn, columns, labelsByColumn, colorBy, visibleColumns, showBands, indexType, xAxisLabel, yAxisLabel])
+  }, [rows, indexColumn, columns, labelsByColumn, colorBy, colorMap, visibleColumns, showBands, indexType, xAxisLabel, yAxisLabel])
 
   return (
     <Plot

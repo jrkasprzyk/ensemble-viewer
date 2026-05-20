@@ -5,6 +5,8 @@ import {
   tieLabelCategories,
   detectIndexType,
   parseSidecarLabels,
+  parseFiniteLabelNumber,
+  buildSortMetadata,
 } from './labels.js'
 
 // ---------------------------------------------------------------------------
@@ -137,6 +139,98 @@ describe('detectIndexType', () => {
     const rows = [{ year: null }, { year: '' }]
     // Zero date hits and zero num hits → dateHits (0) > numHits (0) is false → numeric
     expect(detectIndexType(rows, 'year')).toBe('numeric')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// parseFiniteLabelNumber
+// ---------------------------------------------------------------------------
+describe('parseFiniteLabelNumber', () => {
+  it('parses numeric strings as numbers', () => {
+    expect(parseFiniteLabelNumber('80')).toBe(80)
+    expect(parseFiniteLabelNumber('95.5')).toBe(95.5)
+    expect(parseFiniteLabelNumber('-10')).toBe(-10)
+  })
+
+  it('parses actual numbers', () => {
+    expect(parseFiniteLabelNumber(102)).toBe(102)
+  })
+
+  it('returns null for non-numeric strings', () => {
+    expect(parseFiniteLabelNumber('RCP85')).toBeNull()
+    expect(parseFiniteLabelNumber('')).toBeNull()
+    expect(parseFiniteLabelNumber('abc')).toBeNull()
+  })
+
+  it('returns null for Infinity and NaN', () => {
+    expect(parseFiniteLabelNumber(Infinity)).toBeNull()
+    expect(parseFiniteLabelNumber(-Infinity)).toBeNull()
+    expect(parseFiniteLabelNumber(NaN)).toBeNull()
+    expect(parseFiniteLabelNumber('Infinity')).toBeNull()
+  })
+
+  it('returns null for null and undefined', () => {
+    expect(parseFiniteLabelNumber(null)).toBeNull()
+    expect(parseFiniteLabelNumber(undefined)).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// buildSortMetadata
+// ---------------------------------------------------------------------------
+describe('buildSortMetadata', () => {
+  const labelsByColumn = {
+    col1: { percent: '80', scenario: 'RCP45' },
+    col2: { percent: '95', scenario: 'RCP85' },
+    col3: { percent: '102', scenario: 'RCP45' },
+  }
+
+  it('returns sortableValueByColumn with raw label values', () => {
+    const { sortableValueByColumn } = buildSortMetadata(labelsByColumn, 'percent')
+    expect(sortableValueByColumn).toEqual({ col1: '80', col2: '95', col3: '102' })
+  })
+
+  it('returns sortableNumberByColumn with parsed numbers', () => {
+    const { sortableNumberByColumn } = buildSortMetadata(labelsByColumn, 'percent')
+    expect(sortableNumberByColumn).toEqual({ col1: 80, col2: 95, col3: 102 })
+  })
+
+  it('computes numericDomain min and max from finite values only', () => {
+    const { numericDomain } = buildSortMetadata(labelsByColumn, 'percent')
+    expect(numericDomain).toEqual({ min: 80, max: 102 })
+  })
+
+  it('returns null for non-numeric category values in sortableNumberByColumn', () => {
+    const { sortableNumberByColumn } = buildSortMetadata(labelsByColumn, 'scenario')
+    expect(sortableNumberByColumn.col1).toBeNull()
+  })
+
+  it('returns numericDomain null when no finite values exist', () => {
+    const { numericDomain } = buildSortMetadata(labelsByColumn, 'scenario')
+    expect(numericDomain).toBeNull()
+  })
+
+  it('returns empty maps and null domain when sortCategory is empty string', () => {
+    const result = buildSortMetadata(labelsByColumn, '')
+    expect(result.sortableValueByColumn).toEqual({})
+    expect(result.sortableNumberByColumn).toEqual({})
+    expect(result.numericDomain).toBeNull()
+  })
+
+  it('returns empty maps and null domain when sortCategory is absent', () => {
+    const result = buildSortMetadata(labelsByColumn)
+    expect(result.sortableValueByColumn).toEqual({})
+    expect(result.numericDomain).toBeNull()
+  })
+
+  it('uses only min and max of finite values (not non-numeric)', () => {
+    const mixed = {
+      a: { val: '10' },
+      b: { val: 'abc' },
+      c: { val: '20' },
+    }
+    const { numericDomain } = buildSortMetadata(mixed, 'val')
+    expect(numericDomain).toEqual({ min: 10, max: 20 })
   })
 })
 
