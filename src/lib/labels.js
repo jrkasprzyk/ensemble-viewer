@@ -154,6 +154,108 @@ export function tieLabelCategories(labelsByColumn, categories = []) {
 }
 
 /**
+ * Parse a label value as a finite number.
+ * Returns Number(value) when finite, null otherwise.
+ *
+ * @param {string} value
+ * @returns {number|null}
+ */
+export function parseFiniteLabelNumber(value) {
+  if (value === null || value === undefined || value === '') return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+/**
+ * Build sort metadata for a given sort category across all columns.
+ *
+ * Returns:
+ *   sortableValueByColumn   – { [col]: string } raw label value for sortCategory
+ *   sortableNumberByColumn  – { [col]: number|null } parsed numeric value (null if non-numeric)
+ *   numericDomain           – { min, max } using only finite values, or null if none
+ *
+ * @param {Record<string, Record<string, string>>} labelsByColumn
+ * @param {string} sortCategory
+ * @returns {{ sortableValueByColumn: Record<string,string>, sortableNumberByColumn: Record<string,number|null>, numericDomain: {min:number,max:number}|null }}
+ */
+export function buildSortMetadata(labelsByColumn, sortCategory) {
+  const sortableValueByColumn = {}
+  const sortableNumberByColumn = {}
+
+  if (!sortCategory) {
+    return { sortableValueByColumn, sortableNumberByColumn, numericDomain: null }
+  }
+
+  const finiteValues = []
+  for (const col of Object.keys(labelsByColumn)) {
+    const val = labelsByColumn[col]?.[sortCategory] ?? ''
+    sortableValueByColumn[col] = val
+    const n = parseFiniteLabelNumber(val)
+    sortableNumberByColumn[col] = n
+    if (n !== null) finiteValues.push(n)
+  }
+
+  const numericDomain = finiteValues.length
+    ? { min: Math.min(...finiteValues), max: Math.max(...finiteValues) }
+    : null
+
+  return { sortableValueByColumn, sortableNumberByColumn, numericDomain }
+}
+
+/**
+ * Compute the set of data columns that pass label and numeric range filters.
+ *
+ * Columns can have different label schemas after categories are tied. A label
+ * filter only applies to columns that actually carry that category.
+ *
+ * @param {object} args
+ * @param {string[]} args.columns
+ * @param {Record<string, Record<string, string>>} args.labelsByColumn
+ * @param {Record<string, string[]>} args.categoryValues
+ * @param {Record<string, Set<string>>} args.activeByCategory
+ * @param {{min:number,max:number}|null} args.sortRange
+ * @param {{min:number,max:number}|null} args.sortNumericDomain
+ * @param {Record<string, number|null>} args.sortableNumberByColumn
+ * @returns {Set<string>}
+ */
+export function buildVisibleColumnSet({
+  columns,
+  labelsByColumn,
+  categoryValues,
+  activeByCategory,
+  sortRange = null,
+  sortNumericDomain = null,
+  sortableNumberByColumn = {},
+}) {
+  const cats = Object.keys(categoryValues || {})
+  const out = new Set()
+
+  for (const col of columns) {
+    const labels = labelsByColumn[col] || {}
+    let ok = true
+
+    for (const cat of cats) {
+      if (!Object.prototype.hasOwnProperty.call(labels, cat)) continue
+
+      const active = activeByCategory[cat]
+      if (!active || !active.has(labels[cat] ?? '')) {
+        ok = false
+        break
+      }
+    }
+
+    if (ok && sortRange !== null && sortNumericDomain !== null) {
+      const n = sortableNumberByColumn[col]
+      if (n === null || n === undefined || n < sortRange.min || n > sortRange.max) ok = false
+    }
+
+    if (ok) out.add(col)
+  }
+
+  return out
+}
+
+/**
  * Auto-detect whether the index column holds dates or plain numbers.
  * Returns 'datetime' | 'numeric'.
  *

@@ -5,6 +5,9 @@ import {
   tieLabelCategories,
   detectIndexType,
   parseSidecarLabels,
+  parseFiniteLabelNumber,
+  buildSortMetadata,
+  buildVisibleColumnSet,
 } from './labels.js'
 
 // ---------------------------------------------------------------------------
@@ -137,6 +140,184 @@ describe('detectIndexType', () => {
     const rows = [{ year: null }, { year: '' }]
     // Zero date hits and zero num hits → dateHits (0) > numHits (0) is false → numeric
     expect(detectIndexType(rows, 'year')).toBe('numeric')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// parseFiniteLabelNumber
+// ---------------------------------------------------------------------------
+describe('parseFiniteLabelNumber', () => {
+  it('parses numeric strings as numbers', () => {
+    expect(parseFiniteLabelNumber('80')).toBe(80)
+    expect(parseFiniteLabelNumber('95.5')).toBe(95.5)
+    expect(parseFiniteLabelNumber('-10')).toBe(-10)
+  })
+
+  it('parses actual numbers', () => {
+    expect(parseFiniteLabelNumber(102)).toBe(102)
+  })
+
+  it('returns null for non-numeric strings', () => {
+    expect(parseFiniteLabelNumber('RCP85')).toBeNull()
+    expect(parseFiniteLabelNumber('')).toBeNull()
+    expect(parseFiniteLabelNumber('abc')).toBeNull()
+  })
+
+  it('returns null for Infinity and NaN', () => {
+    expect(parseFiniteLabelNumber(Infinity)).toBeNull()
+    expect(parseFiniteLabelNumber(-Infinity)).toBeNull()
+    expect(parseFiniteLabelNumber(NaN)).toBeNull()
+    expect(parseFiniteLabelNumber('Infinity')).toBeNull()
+  })
+
+  it('returns null for null and undefined', () => {
+    expect(parseFiniteLabelNumber(null)).toBeNull()
+    expect(parseFiniteLabelNumber(undefined)).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// buildSortMetadata
+// ---------------------------------------------------------------------------
+describe('buildSortMetadata', () => {
+  const labelsByColumn = {
+    col1: { percent: '80', scenario: 'RCP45' },
+    col2: { percent: '95', scenario: 'RCP85' },
+    col3: { percent: '102', scenario: 'RCP45' },
+  }
+
+  it('returns sortableValueByColumn with raw label values', () => {
+    const { sortableValueByColumn } = buildSortMetadata(labelsByColumn, 'percent')
+    expect(sortableValueByColumn).toEqual({ col1: '80', col2: '95', col3: '102' })
+  })
+
+  it('returns sortableNumberByColumn with parsed numbers', () => {
+    const { sortableNumberByColumn } = buildSortMetadata(labelsByColumn, 'percent')
+    expect(sortableNumberByColumn).toEqual({ col1: 80, col2: 95, col3: 102 })
+  })
+
+  it('computes numericDomain min and max from finite values only', () => {
+    const { numericDomain } = buildSortMetadata(labelsByColumn, 'percent')
+    expect(numericDomain).toEqual({ min: 80, max: 102 })
+  })
+
+  it('returns null for non-numeric category values in sortableNumberByColumn', () => {
+    const { sortableNumberByColumn } = buildSortMetadata(labelsByColumn, 'scenario')
+    expect(sortableNumberByColumn.col1).toBeNull()
+  })
+
+  it('returns numericDomain null when no finite values exist', () => {
+    const { numericDomain } = buildSortMetadata(labelsByColumn, 'scenario')
+    expect(numericDomain).toBeNull()
+  })
+
+  it('returns empty maps and null domain when sortCategory is empty string', () => {
+    const result = buildSortMetadata(labelsByColumn, '')
+    expect(result.sortableValueByColumn).toEqual({})
+    expect(result.sortableNumberByColumn).toEqual({})
+    expect(result.numericDomain).toBeNull()
+  })
+
+  it('returns empty maps and null domain when sortCategory is absent', () => {
+    const result = buildSortMetadata(labelsByColumn)
+    expect(result.sortableValueByColumn).toEqual({})
+    expect(result.numericDomain).toBeNull()
+  })
+
+  it('uses only min and max of finite values (not non-numeric)', () => {
+    const mixed = {
+      a: { val: '10' },
+      b: { val: 'abc' },
+      c: { val: '20' },
+    }
+    const { numericDomain } = buildSortMetadata(mixed, 'val')
+    expect(numericDomain).toEqual({ min: 10, max: 20 })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// buildVisibleColumnSet
+// ---------------------------------------------------------------------------
+describe('buildVisibleColumnSet', () => {
+  it('keeps mixed label schemas visible when all present values are active', () => {
+    const labelsByColumn = {
+      yearOnly: { Year: '1988' },
+      percentOnly: { Percent: '95' },
+      tied: { 'Year + Percent': '1990 | 102' },
+    }
+    const result = buildVisibleColumnSet({
+      columns: ['yearOnly', 'percentOnly', 'tied'],
+      labelsByColumn,
+      categoryValues: summarizeLabels(labelsByColumn),
+      activeByCategory: {
+        Year: new Set(['1988']),
+        Percent: new Set(['95']),
+        'Year + Percent': new Set(['1990 | 102']),
+      },
+    })
+
+    expect([...result]).toEqual(['yearOnly', 'percentOnly', 'tied'])
+  })
+
+  it('applies label filters only to columns that carry that category', () => {
+    const labelsByColumn = {
+      yearOnly: { Year: '1988' },
+      percentOnly: { Percent: '95' },
+      tied: { 'Year + Percent': '1990 | 102' },
+    }
+    const result = buildVisibleColumnSet({
+      columns: ['yearOnly', 'percentOnly', 'tied'],
+      labelsByColumn,
+      categoryValues: summarizeLabels(labelsByColumn),
+      activeByCategory: {
+        Year: new Set(),
+        Percent: new Set(['95']),
+        'Year + Percent': new Set(['1990 | 102']),
+      },
+    })
+
+    expect([...result]).toEqual(['percentOnly', 'tied'])
+  })
+
+  it('ignores a stale sort range when the selected sort category has no numeric domain', () => {
+    const labelsByColumn = {
+      run1: { scenario: 'RCP45' },
+      run2: { scenario: 'RCP85' },
+    }
+    const result = buildVisibleColumnSet({
+      columns: ['run1', 'run2'],
+      labelsByColumn,
+      categoryValues: summarizeLabels(labelsByColumn),
+      activeByCategory: {
+        scenario: new Set(['RCP45', 'RCP85']),
+      },
+      sortRange: { min: 0, max: 1 },
+      sortNumericDomain: null,
+      sortableNumberByColumn: { run1: null, run2: null },
+    })
+
+    expect([...result]).toEqual(['run1', 'run2'])
+  })
+
+  it('applies a sort range only while a numeric domain exists', () => {
+    const labelsByColumn = {
+      run1: { percent: '80' },
+      run2: { percent: '95' },
+      run3: { percent: '102' },
+    }
+    const result = buildVisibleColumnSet({
+      columns: ['run1', 'run2', 'run3'],
+      labelsByColumn,
+      categoryValues: summarizeLabels(labelsByColumn),
+      activeByCategory: {
+        percent: new Set(['80', '95', '102']),
+      },
+      sortRange: { min: 90, max: 100 },
+      sortNumericDomain: { min: 80, max: 102 },
+      sortableNumberByColumn: { run1: 80, run2: 95, run3: 102 },
+    })
+
+    expect([...result]).toEqual(['run2'])
   })
 })
 

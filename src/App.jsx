@@ -11,7 +11,11 @@ import {
   summarizeLabels,
   tieLabelCategories,
   detectIndexType,
+  buildSortMetadata,
+  parseFiniteLabelNumber,
+  buildVisibleColumnSet,
 } from './lib/labels.js'
+import { buildColorMap, buildSequentialColorMap } from './lib/palette.js'
 
 const EMPTY_LABEL = '⟨empty⟩'
 
@@ -39,6 +43,10 @@ export default function App() {
   const [splitBy, setSplitBy] = useState('')
   const [tieCategoryA, setTieCategoryA] = useState('')
   const [tieCategoryB, setTieCategoryB] = useState('')
+
+  // Sort / range filtering
+  const [sortCategory, setSortCategory] = useState('')
+  const [sortRange, setSortRange] = useState(null)
 
   // UI
   const [error, setError] = useState(null)
@@ -119,6 +127,40 @@ export default function App() {
 
   const categoryValues = useMemo(() => summarizeLabels(effectiveLabelsByColumn), [effectiveLabelsByColumn])
 
+  const { sortableNumberByColumn, numericDomain } = useMemo(
+    () => buildSortMetadata(labelsByColumn, sortCategory),
+    [labelsByColumn, sortCategory]
+  )
+
+  const numericCategories = useMemo(() => {
+    return Object.entries(baseCategoryValues)
+      .filter(([, vals]) => vals.some((v) => parseFiniteLabelNumber(v) !== null))
+      .map(([cat]) => cat)
+  }, [baseCategoryValues])
+
+  const colorMap = useMemo(() => {
+    if (!colorBy || !categoryValues[colorBy]) return {}
+    const vals = categoryValues[colorBy]
+    const allNumeric = vals.every((v) => parseFiniteLabelNumber(v) !== null)
+    if (allNumeric) {
+      const sorted = [...vals].sort((a, b) => parseFiniteLabelNumber(a) - parseFiniteLabelNumber(b))
+      return buildSequentialColorMap(sorted)
+    }
+    return buildColorMap([...vals].sort())
+  }, [colorBy, categoryValues])
+
+  const orderedColumns = useMemo(() => {
+    if (!sortCategory || !numericDomain) return columns
+    return [...columns].sort((a, b) => {
+      const na = sortableNumberByColumn[a]
+      const nb = sortableNumberByColumn[b]
+      if (na !== null && nb !== null) return na - nb
+      if (na !== null) return -1
+      if (nb !== null) return 1
+      return String(a).localeCompare(String(b))
+    })
+  }, [columns, sortCategory, numericDomain, sortableNumberByColumn])
+
   // When categories change, initialize activeByCategory with "all selected"
   useEffect(() => {
     const next = {}
@@ -138,27 +180,30 @@ export default function App() {
     }
     if (tieCategoryA && !baseCategoryValues[tieCategoryA]) setTieCategoryA('')
     if (tieCategoryB && !baseCategoryValues[tieCategoryB]) setTieCategoryB('')
-  }, [categoryValues, baseCategoryValues, colorBy, splitBy, tieCategoryA, tieCategoryB])
+    if (sortCategory && !baseCategoryValues[sortCategory]) {
+      setSortCategory('')
+      setSortRange(null)
+    } else if (sortCategory && !numericDomain && sortRange !== null) {
+      setSortRange(null)
+    }
+  }, [categoryValues, baseCategoryValues, colorBy, splitBy, tieCategoryA, tieCategoryB, sortCategory, numericDomain, sortRange])
 
   // Compute which columns are currently visible given the filters
   const visibleColumns = useMemo(() => {
-    const cats = Object.keys(categoryValues)
-    const out = new Set()
-    for (const col of columns) {
-      const labels = effectiveLabelsByColumn[col] || {}
-      let ok = true
-      for (const cat of cats) {
-        const active = activeByCategory[cat]
-        if (!active || !active.has(labels[cat] ?? '')) { ok = false; break }
-      }
-      if (ok) out.add(col)
-    }
-    return out
-  }, [columns, effectiveLabelsByColumn, activeByCategory, categoryValues])
+    return buildVisibleColumnSet({
+      columns,
+      labelsByColumn: effectiveLabelsByColumn,
+      categoryValues,
+      activeByCategory,
+      sortRange,
+      sortNumericDomain: numericDomain,
+      sortableNumberByColumn,
+    })
+  }, [columns, effectiveLabelsByColumn, activeByCategory, categoryValues, sortRange, numericDomain, sortableNumberByColumn])
 
   const plotGroups = useMemo(() => {
     if (!splitBy || !categoryValues[splitBy]) {
-      return [{ key: 'all', title: null, columns }]
+      return [{ key: 'all', title: null, columns: orderedColumns }]
     }
     const activeValues = activeByCategory[splitBy] || new Set()
     return categoryValues[splitBy]
@@ -166,9 +211,9 @@ export default function App() {
       .map((val) => ({
         key: `${splitBy}:${JSON.stringify(val)}`,
         title: `${splitBy}: ${val || EMPTY_LABEL}`,
-        columns: columns.filter((c) => visibleColumns.has(c) && (effectiveLabelsByColumn[c]?.[splitBy] ?? '') === val),
+        columns: orderedColumns.filter((c) => visibleColumns.has(c) && (effectiveLabelsByColumn[c]?.[splitBy] ?? '') === val),
       }))
-  }, [splitBy, categoryValues, activeByCategory, columns, effectiveLabelsByColumn])
+  }, [splitBy, categoryValues, activeByCategory, orderedColumns, effectiveLabelsByColumn, visibleColumns])
 
   // --- Handlers ----------------------------------------------------------
 
@@ -254,6 +299,12 @@ export default function App() {
               onTieCategoryAChange={setTieCategoryA}
               onTieCategoryBChange={setTieCategoryB}
               tieCategoryOptions={Object.keys(baseCategoryValues)}
+              colorMap={colorMap}
+              sortCategory={sortCategory}
+              onSortCategoryChange={(cat) => { setSortCategory(cat); setSortRange(null) }}
+              numericCategories={numericCategories}
+              sortRangeControl={sortCategory && numericDomain ? { domain: numericDomain, value: sortRange ?? numericDomain } : null}
+              onSortRangeChange={setSortRange}
             />
           )}
 
@@ -284,6 +335,7 @@ export default function App() {
                         columns={group.columns}
                         labelsByColumn={effectiveLabelsByColumn}
                         colorBy={colorBy}
+                        colorMap={colorMap}
                         visibleColumns={visibleColumns}
                         showBands={showBands}
                         indexType={indexType}
