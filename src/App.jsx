@@ -13,6 +13,7 @@ import {
   detectIndexType,
   buildSortMetadata,
   parseFiniteLabelNumber,
+  buildVisibleColumnSet,
 } from './lib/labels.js'
 import { buildColorMap, buildSequentialColorMap } from './lib/palette.js'
 
@@ -182,28 +183,23 @@ export default function App() {
     if (sortCategory && !baseCategoryValues[sortCategory]) {
       setSortCategory('')
       setSortRange(null)
+    } else if (sortCategory && !numericDomain && sortRange !== null) {
+      setSortRange(null)
     }
-  }, [categoryValues, baseCategoryValues, colorBy, splitBy, tieCategoryA, tieCategoryB, sortCategory])
+  }, [categoryValues, baseCategoryValues, colorBy, splitBy, tieCategoryA, tieCategoryB, sortCategory, numericDomain, sortRange])
 
   // Compute which columns are currently visible given the filters
   const visibleColumns = useMemo(() => {
-    const cats = Object.keys(categoryValues)
-    const out = new Set()
-    for (const col of columns) {
-      const labels = effectiveLabelsByColumn[col] || {}
-      let ok = true
-      for (const cat of cats) {
-        const active = activeByCategory[cat]
-        if (!active || !active.has(labels[cat] ?? '')) { ok = false; break }
-      }
-      if (ok && sortRange !== null) {
-        const n = sortableNumberByColumn[col]
-        if (n === null || n < sortRange.min || n > sortRange.max) ok = false
-      }
-      if (ok) out.add(col)
-    }
-    return out
-  }, [columns, effectiveLabelsByColumn, activeByCategory, categoryValues, sortRange, sortableNumberByColumn])
+    return buildVisibleColumnSet({
+      columns,
+      labelsByColumn: effectiveLabelsByColumn,
+      categoryValues,
+      activeByCategory,
+      sortRange,
+      sortNumericDomain: numericDomain,
+      sortableNumberByColumn,
+    })
+  }, [columns, effectiveLabelsByColumn, activeByCategory, categoryValues, sortRange, numericDomain, sortableNumberByColumn])
 
   const plotGroups = useMemo(() => {
     if (!splitBy || !categoryValues[splitBy]) {

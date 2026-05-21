@@ -203,6 +203,59 @@ export function buildSortMetadata(labelsByColumn, sortCategory) {
 }
 
 /**
+ * Compute the set of data columns that pass label and numeric range filters.
+ *
+ * Columns can have different label schemas after categories are tied. A label
+ * filter only applies to columns that actually carry that category.
+ *
+ * @param {object} args
+ * @param {string[]} args.columns
+ * @param {Record<string, Record<string, string>>} args.labelsByColumn
+ * @param {Record<string, string[]>} args.categoryValues
+ * @param {Record<string, Set<string>>} args.activeByCategory
+ * @param {{min:number,max:number}|null} args.sortRange
+ * @param {{min:number,max:number}|null} args.sortNumericDomain
+ * @param {Record<string, number|null>} args.sortableNumberByColumn
+ * @returns {Set<string>}
+ */
+export function buildVisibleColumnSet({
+  columns,
+  labelsByColumn,
+  categoryValues,
+  activeByCategory,
+  sortRange = null,
+  sortNumericDomain = null,
+  sortableNumberByColumn = {},
+}) {
+  const cats = Object.keys(categoryValues || {})
+  const out = new Set()
+
+  for (const col of columns) {
+    const labels = labelsByColumn[col] || {}
+    let ok = true
+
+    for (const cat of cats) {
+      if (!Object.prototype.hasOwnProperty.call(labels, cat)) continue
+
+      const active = activeByCategory[cat]
+      if (!active || !active.has(labels[cat] ?? '')) {
+        ok = false
+        break
+      }
+    }
+
+    if (ok && sortRange !== null && sortNumericDomain !== null) {
+      const n = sortableNumberByColumn[col]
+      if (n === null || n === undefined || n < sortRange.min || n > sortRange.max) ok = false
+    }
+
+    if (ok) out.add(col)
+  }
+
+  return out
+}
+
+/**
  * Auto-detect whether the index column holds dates or plain numbers.
  * Returns 'datetime' | 'numeric'.
  *
