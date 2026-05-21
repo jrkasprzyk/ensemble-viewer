@@ -162,3 +162,4 @@ htmlcov/
 
 # VSCode settings
 .vscode/
+.gstack/
