@@ -18,6 +18,7 @@ export default function FileDropzone({ onFile, onSidecar, hasData }) {
   const [loadError, setLoadError] = useState(null)
 
   useEffect(() => {
+    mountedRef.current = true
     return () => { mountedRef.current = false }
   }, [])
 
