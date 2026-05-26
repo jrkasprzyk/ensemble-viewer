@@ -1,0 +1,1 @@
+The .rdf files that the corrected data (SE_Oct2025_vTC) is associated with are in the folder `Vulnerability Analysis/RDF Outputs/Super Ensemble Oct 2025 RDF Outputs - 20260514`. within the `zaca1902/CRMMS_Data_Processing/` repo!
