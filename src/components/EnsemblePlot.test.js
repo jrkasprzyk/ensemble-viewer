@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveLineStyling } from './EnsemblePlot.jsx'
+import { MIN_BAND_LINE_OPACITY, resolveLineStyling } from './EnsemblePlot.jsx'
 
 describe('resolveLineStyling', () => {
   it('increases line thickness and opacity when fewer lines are visible', () => {
@@ -15,6 +15,6 @@ describe('resolveLineStyling', () => {
     const withBands = resolveLineStyling(40, true)
 
     expect(withBands.opacity).toBeLessThan(withoutBands.opacity)
-    expect(withBands.opacity).toBeGreaterThanOrEqual(0.16)
+    expect(withBands.opacity).toBeGreaterThanOrEqual(MIN_BAND_LINE_OPACITY)
   })
 })

@@ -196,7 +196,7 @@ const MAX_LINE_WIDTH = 2.8
 const LINE_OPACITY_SCALE = 2.2
 const MIN_LINE_OPACITY = 0.2
 const MAX_LINE_OPACITY = 0.72
-const MIN_BAND_LINE_OPACITY = 0.16
+export const MIN_BAND_LINE_OPACITY = 0.16
 const BAND_OPACITY_SCALE = 0.7
 
 export function resolveLineStyling(lineCount, showBands) {
