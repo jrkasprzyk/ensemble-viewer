@@ -17,21 +17,21 @@
     "id": "crmms-powell-elevation",
     "label": "CRMMS: Lake Powell Pool Elevation",
     "description": "Lake Powell pool elevation ensemble traces",
-    "entry": "/crmms/res_Powell_Pool_Elevation.csv",
+    "entry": "/crmms-es/res_Powell_Pool_Elevation.csv",
     "sidecar": null
   },
   {
     "id": "crmms-powell-evap",
     "label": "CRMMS: Lake Powell Evaporation",
     "description": "Lake Powell evaporation ensemble traces",
-    "entry": "/crmms/res_Powell_Evaporation.csv",
+    "entry": "/crmms-es/res_Powell_Evaporation.csv",
     "sidecar": null
   },
   {
     "id": "crmms-powell-inflow",
     "label": "CRMMS: Unregulated Inflow to Lake Powell",
     "description": "Unregulated inflow ensemble traces for Lake Powell",
-    "entry": "/crmms/streamflow_PowellInflow_Unregulated.csv",
+    "entry": "/crmms-es/streamflow_PowellInflow_Unregulated.csv",
     "sidecar": null
   }
 ]

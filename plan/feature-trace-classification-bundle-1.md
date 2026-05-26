@@ -38,7 +38,7 @@ The key design insight: a classification bundle is structurally identical to a s
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
 | TASK-001 | Add `deriveSchemeNames(fileNames: string[]): string[]` to `src/lib/labels.js`. Algorithm: (1) strip file extensions, (2) find longest common prefix among all names, (3) strip it, (4) find longest common suffix among remainders, (5) strip it. If result is empty string for any file, fall back to the full basename without extension. | | |
-| TASK-002 | Add `parseClassificationBundle(files: File[]): Promise<labelsByColumn>` to `src/lib/labels.js`. For each file: parse CSV with PapaParse (`header: true, skipEmptyLines: true`), expect columns `TraceNumber` and `Class`. Build intermediate map `{ [traceNumber: string]: { [schemeName]: classValue } }`. After processing all files, return the map (keyed by string trace number — column mapping happens at integration time). | | |
+| TASK-002 | Add `parseClassificationBundle(files: File[]): Promise<rawByTraceNum>` to `src/lib/labels.js`. For each file: parse CSV with PapaParse (`header: true, skipEmptyLines: true`), expect columns `TraceNumber` and `Class`. If either column is absent, throw `Error(\`Classification file "${file.name}" is missing column '${col}'\`)`. Build intermediate map `{ [traceNumber: string]: { [schemeName]: classValue } }`. After processing all files, return the map (keyed by string trace number — column mapping happens at integration time). | | |
 | TASK-003 | Add `applyClassificationMapping(rawByTraceNum: Record<string, Record<string, string>>, columns: string[]): labelsByColumn` to `src/lib/labels.js`. For each column, extract numeric suffix via `/(\d+)$/`, look up that number in `rawByTraceNum`, assign labels. Columns with no match get no entry. | | |
 | TASK-004 | Export all three new functions from `src/lib/labels.js`. | | |
 
@@ -48,33 +48,41 @@ The key design insight: a classification bundle is structurally identical to a s
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-005 | Update `examples.json` schema: add optional `"classifications": string[] \| null` field alongside existing `"sidecar"`. Add initial CRMMS-ES example entry using `"entry": "/crmms-es/res_Powell_Pool_Elevation.csv"` (confirmed present) and `"classifications": ["/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY1.txt", "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY1_20pct.txt", "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY1_30pct.txt", "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY2.txt", "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY2_10pct.txt", "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY2_20pct.txt", "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY5.txt", "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY5_10pct.txt", "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY5_20pct.txt"]`. Additional reservoir/streamflow entries (Mead, Flaming Gorge, etc.) can share the same `classifications` array. | | |
+| TASK-005 | Update `examples.json` schema: add optional `"classifications": string[] \| null` field alongside existing `"sidecar"`. Update the 3 existing CRMMS entries (powell-elevation, powell-evap, powell-inflow) to use corrected `/crmms-es/` paths and add `"classifications": ["/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY1.txt", "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY1_20pct.txt", "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY1_30pct.txt", "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY2.txt", "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY2_10pct.txt", "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY2_20pct.txt", "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY5.txt", "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY5_10pct.txt", "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY5_20pct.txt"]`. Note: path fix already applied 2026-05-26. | | |
 | TASK-006 | Add `fetchClassificationBundle(paths: string[]): Promise<File[]>` to `src/lib/sampleData.js`. Fetches each path via `fetchFileAsUpload` (existing private helper) and returns array of `File` objects. | | |
-| TASK-007 | Update `fetchExamples()` consumer in `src/App.jsx`: when loading an example, if `example.classifications` is present, call `fetchClassificationBundle` then `parseClassificationBundle` + `applyClassificationMapping`, set `labelsByColumn`, and set `labelStrategy` to `'classifications'`. | | |
+| TASK-007 | Update `handleExampleChange` in `src/components/FileDropzone.jsx`: when loading an example, if `example.classifications` is present, call `fetchClassificationBundle(example.classifications)` then pass the resulting `File[]` to the `onClassifications` prop. The `onClassifications` prop (`loadClassifications` in App.jsx) handles parsing and state update via the reactive pattern (TASK-010b). | | |
+| TASK-007b | Fix sidecar ordering bug in `handleExampleChange`: call `onFile(file)` before `onSidecar`/`onClassifications`. Also update `loadFile` in `App.jsx` to not overwrite `labelsByColumn` when `labelStrategy` is already `'sidecar'` or `'classifications'` — or, simpler, call sidecar/classifications after `onFile` resolves so they always win. | | |
 
 ### Implementation Phase 3: UI — File Upload
 
-- GOAL-003: Let users drag-drop or select multiple classification `.txt` files to load a bundle manually.
+- GOAL-003: Let users select multiple classification `.txt` files to load a bundle manually.
+
+> **Design note:** No drag target for classifications — the window-level drag handler sends `files[0]` to `loadFile`, so multi-file drops would misfire. Classifications use a browse button only (`<input type="file" multiple accept=".txt">`).
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-008 | Add a new drop target / file input section to `src/components/FileDropzone.jsx` for classification bundles. Accept multiple files. Label: "Drop classification files (.txt)" or similar. On drop/select, call `loadClassifications(files)` (defined in Phase 4). | | |
-| TASK-009 | Add a visual indicator in `FileDropzone.jsx` showing how many classification schemes are loaded (e.g. "3 schemes loaded"). | | |
+| TASK-008 | Add a multi-file browse button section to `src/components/FileDropzone.jsx` for classification bundles (no drag target). Accept multiple `.txt` files. On select, call `onClassifications(files)` prop (defined in Phase 4). Label: "Classification files (optional)" with browse button. | | |
+| TASK-009 | Add a visual indicator in `FileDropzone.jsx` showing how many classification schemes are loaded (e.g. "3 schemes loaded"). Receive count via `classificationSchemeCount` prop from App.jsx (derived from `rawClassificationsByTrace`). | | |
 
 ### Implementation Phase 4: App State Integration
 
 - GOAL-004: Wire `labelsByColumn` population from classification bundle into `App.jsx`.
 
+> **Design note (reactive pattern):** `applyClassificationMapping` needs `columns`, which is async state — it won't be settled when `loadClassifications` is called from FileDropzone. Instead, store the raw trace-keyed map in state and derive `labelsByColumn` reactively via `useMemo`. This also fixes a pre-existing bug where sidecar labels loaded from examples are silently overwritten by `loadFile`.
+
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
 | TASK-010 | Add `'classifications'` as a valid value of `labelStrategy` state in `App.jsx`. | | |
-| TASK-011 | Add `loadClassifications(files: File[])` async function in `App.jsx`. Calls `parseClassificationBundle(files)` to get `rawByTraceNum`, then calls `applyClassificationMapping(rawByTraceNum, columns)` using current `columns` state, then calls `setLabelsByColumn` and `setLabelStrategy('classifications')`. | | |
-| TASK-012 | Ensure `loadClassifications` is passed as a prop to `FileDropzone` and called from the example loader (TASK-007). | | |
-| TASK-013 | Clear classification labels when a new primary data file is loaded (same as existing sidecar clear behavior). | | |
+| TASK-010b | Add `rawClassificationsByTrace` state (`useState(null)`) in `App.jsx`. Add `useMemo` that calls `applyClassificationMapping(rawClassificationsByTrace, columns)` when both are non-empty, producing `classificationLabels`. Add `useEffect` watching `classificationLabels`: when non-null, call `setLabelsByColumn(classificationLabels)` and `setLabelStrategy('classifications')`. | | |
+| TASK-011 | Add `loadClassifications(files: File[])` async function in `App.jsx`. Calls `parseClassificationBundle(files)` to get `rawByTraceNum`, then calls `setRawClassificationsByTrace(rawByTraceNum)`. No direct `columns` dependency — the reactive memo handles mapping. | | |
+| TASK-012 | Ensure `loadClassifications` is passed as a prop to `FileDropzone` and called from the example loader. Note: TASK-007 reference to `src/App.jsx` is correct for the `loadClassifications` function; the FileDropzone calls `fetchClassificationBundle` then invokes the prop. | | |
+| TASK-013 | Clear `rawClassificationsByTrace` (set to `null`) when a new primary data file is loaded. The reactive memo will then produce `null`, suppressing any stale label application. | | |
 
 ### Implementation Phase 5: UI — LabelControls Display
 
 - GOAL-005: Verify that existing `LabelControls` renders classification schemes correctly and the "in A but not B" use case works via checkboxes.
+
+> **Design note (`LabelStrategyPicker`):** No new picker option needed. When `labelStrategy === 'classifications'`, `LabelStrategyPicker` shows a read-only indicator ("Classification bundle"). Users switch away by applying a sidecar or name strategy, which overwrites `labelsByColumn` and `labelStrategy` as normal.
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
@@ -98,18 +106,19 @@ The key design insight: a classification bundle is structurally identical to a s
 
 - **FILE-001**: `src/lib/labels.js` — add `deriveSchemeNames`, `parseClassificationBundle`, `applyClassificationMapping`.
 - **FILE-002**: `src/lib/sampleData.js` — add `fetchClassificationBundle`.
-- **FILE-003**: `src/App.jsx` — add `loadClassifications`, `'classifications'` label strategy, wire to example loader.
-- **FILE-004**: `src/components/FileDropzone.jsx` — add classification bundle drop/select UI.
-- **FILE-005**: `public/examples.json` — add `classifications` field to schema; add CRMMS-ES example entries. `public/crmms-es/` contains ~100 CSVs across reservoirs (Powell, Mead, Flaming Gorge, Blue Mesa, etc.) and streamflow sites — each can share the same `classifications` array.
+- **FILE-003**: `src/App.jsx` — add `loadClassifications`, `rawClassificationsByTrace` state, reactive memo, `'classifications'` label strategy, wire to example loader.
+- **FILE-004**: `src/components/FileDropzone.jsx` — add classification bundle browse UI; fix sidecar ordering bug (call `onFile` before `onClassifications`/`onSidecar`).
+- **FILE-005**: `public/examples.json` — add `classifications` field to schema; update 3 existing CRMMS entries with corrected `/crmms-es/` paths and `classifications` array. Path fix already applied 2026-05-26.
 - **FILE-006**: `public/crmms-es/*.txt` — existing source files; no modification needed.
 
 ## 6. Testing
 
 - **TEST-001**: Unit test `deriveSchemeNames` with the 9 actual filenames — assert output is `['EOWY1', 'EOWY1_20pct', 'EOWY1_30pct', 'EOWY2', 'EOWY2_10pct', 'EOWY2_20pct', 'EOWY5', 'EOWY5_10pct', 'EOWY5_20pct']`.
 - **TEST-002**: Unit test `parseClassificationBundle` with 2 mock `File` objects — assert output shape `{ "1": { schemeA: "Success", schemeB: "Failure" }, ... }`.
+- **TEST-002b**: Unit test `parseClassificationBundle` error case — mock `File` missing `TraceNumber` column — assert throws with message containing the filename and column name.
 - **TEST-003**: Unit test `applyClassificationMapping` with columns `['trace_1', 'trace_2', 'trace_99']` and mock `rawByTraceNum` — assert correct column mapping and that columns with no match are absent from output.
 - **TEST-004**: Unit test `applyClassificationMapping` edge case: column name with no numeric suffix (e.g. `"date"`) — assert it is silently skipped.
-- **TEST-005**: Manual regression — load the existing `sample-ensemble-anon` example with sidecar; confirm existing sidecar behavior is unchanged.
+- **TEST-005**: Manual regression — load the `sample-ensemble-anon` example; confirm sidecar labels are applied (not overwritten by `loadFile`). This verifies the sidecar ordering bug fix — previously sidecar labels were silently lost because `onSidecar` was called before `onFile`.
 
 ## 7. Risks & Assumptions
 
