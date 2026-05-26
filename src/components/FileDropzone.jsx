@@ -3,11 +3,13 @@ import {
   fetchExamples,
   fetchExampleFile,
   fetchExampleSidecar,
+  fetchClassificationBundle,
 } from '../lib/sampleData.js'
 
-export default function FileDropzone({ onFile, onSidecar, hasData }) {
+export default function FileDropzone({ onFile, onSidecar, onClassifications, classificationSchemeCount, hasData }) {
   const inputRef = useRef(null)
   const sidecarRef = useRef(null)
+  const classificationsRef = useRef(null)
   const mountedRef = useRef(true)
   const [drag, setDrag] = useState(false)
   const dragCounterRef = useRef(0)
@@ -86,12 +88,18 @@ export default function FileDropzone({ onFile, onSidecar, hasData }) {
     try {
       const file = await fetchExampleFile(example.entry)
       if (!mountedRef.current) return
+      await onFile(file)
+      if (!mountedRef.current) return
       if (example.sidecar && onSidecar) {
         const sidecarFile = await fetchExampleSidecar(example.sidecar)
         if (!mountedRef.current) return
         onSidecar(sidecarFile)
       }
-      onFile(file)
+      if (example.classifications && onClassifications) {
+        const classFiles = await fetchClassificationBundle(example.classifications)
+        if (!mountedRef.current) return
+        onClassifications(classFiles)
+      }
     } catch (e) {
       console.error('Failed to load example', e)
       if (mountedRef.current) setLoadError(e.message || String(e))
@@ -185,6 +193,39 @@ export default function FileDropzone({ onFile, onSidecar, hasData }) {
             accept=".csv"
             className="hidden"
             onChange={(e) => e.target.files?.[0] && onSidecar(e.target.files[0])}
+          />
+        </div>
+      )}
+      {onClassifications && (
+        <div className="mt-2 pt-2 border-t border-rule flex items-center justify-between gap-3">
+          <div className="flex flex-col">
+            <span className="font-mono uppercase tracking-wider text-[10px] text-muted">
+              Classification files (optional)
+            </span>
+            {classificationSchemeCount > 0 && (
+              <span className="font-mono text-[10px] text-ink">
+                {classificationSchemeCount} scheme{classificationSchemeCount !== 1 ? 's' : ''} loaded
+              </span>
+            )}
+          </div>
+          <button
+            onClick={() => classificationsRef.current?.click()}
+            className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider border border-rule hover:border-ink transition-colors"
+          >
+            Browse
+          </button>
+          <input
+            ref={classificationsRef}
+            type="file"
+            accept=".txt"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files?.length) {
+                onClassifications(Array.from(e.target.files))
+                e.target.value = ''
+              }
+            }}
           />
         </div>
       )}

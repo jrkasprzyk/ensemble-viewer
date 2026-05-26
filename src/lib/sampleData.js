@@ -45,6 +45,10 @@ export async function fetchExampleSidecar(sidecar) {
   return fetchFileAsUpload(sidecar)
 }
 
+export async function fetchClassificationBundle(paths) {
+  return Promise.all(paths.map((path) => fetchFileAsUpload(path)))
+}
+
 async function fetchFileAsUpload(path) {
   const res = await fetch(path)
   if (!res.ok) throw new Error(`Failed to fetch ${path} (HTTP ${res.status})`)

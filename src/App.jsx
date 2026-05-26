@@ -8,6 +8,8 @@ import { parseXlsxFile } from './lib/parseXlsx.js'
 import {
   parseLabelsFromNames,
   parseSidecarLabels,
+  parseClassificationBundle,
+  applyClassificationMapping,
   summarizeLabels,
   tieLabelCategories,
   detectIndexType,
@@ -30,6 +32,7 @@ export default function App() {
   // Labels
   const [labelsByColumn, setLabelsByColumn] = useState({})
   const [labelStrategy, setLabelStrategy] = useState('names')
+  const [rawClassificationsByTrace, setRawClassificationsByTrace] = useState(null)
   const [labelRowCount, setLabelRowCount] = useState(0)
   const [delimiter, setDelimiter] = useState('_')
   const [categoriesText, setCategoriesText] = useState('')
@@ -69,6 +72,7 @@ export default function App() {
       setIndexType(detectIndexType(parsed.rows, parsed.indexColumn))
       setColorBy(null)
       setLabelRowCount(parsed.labelRowCount)
+      setRawClassificationsByTrace(null)
 
       if (parsed.labelRowCount > 0 && Object.keys(parsed.labelsByColumn).length) {
         setLabelsByColumn(parsed.labelsByColumn)
@@ -101,6 +105,23 @@ export default function App() {
     }
   }
 
+  async function loadClassifications(files) {
+    setError(null)
+    try {
+      const raw = await parseClassificationBundle(files)
+      setRawClassificationsByTrace(raw)
+    } catch (e) {
+      setError(e.message || String(e))
+    }
+  }
+
+  function handleStrategyChange(val) {
+    setLabelStrategy(val)
+    if (val === 'classifications' && classificationLabels) {
+      setLabelsByColumn(classificationLabels)
+    }
+  }
+
   function applyNameStrategy() {
     if (!columns.length) return
     setLabelsByColumn(
@@ -118,6 +139,26 @@ export default function App() {
   }
 
   // --- Derived state -----------------------------------------------------
+
+  const classificationSchemeCount = useMemo(() => {
+    if (!rawClassificationsByTrace) return 0
+    const allKeys = new Set()
+    for (const schemes of Object.values(rawClassificationsByTrace)) {
+      for (const key of Object.keys(schemes)) allKeys.add(key)
+    }
+    return allKeys.size
+  }, [rawClassificationsByTrace])
+
+  const classificationLabels = useMemo(() => {
+    if (!rawClassificationsByTrace || !columns.length) return null
+    return applyClassificationMapping(rawClassificationsByTrace, columns)
+  }, [rawClassificationsByTrace, columns])
+
+  useEffect(() => {
+    if (!classificationLabels) return
+    setLabelsByColumn(classificationLabels)
+    setLabelStrategy('classifications')
+  }, [classificationLabels])
 
   const baseCategoryValues = useMemo(() => summarizeLabels(labelsByColumn), [labelsByColumn])
 
@@ -261,12 +302,19 @@ export default function App() {
 
       <main className="flex-1 grid grid-cols-[320px_1fr] min-h-0">
         <aside className="border-r border-rule p-3 overflow-y-auto flex flex-col gap-3">
-          <FileDropzone onFile={loadFile} onSidecar={loadSidecar} hasData={rows.length > 0} />
+          <FileDropzone
+            onFile={loadFile}
+            onSidecar={loadSidecar}
+            onClassifications={loadClassifications}
+            classificationSchemeCount={classificationSchemeCount}
+            hasData={rows.length > 0}
+          />
 
           {rows.length > 0 && (
             <LabelStrategyPicker
               strategy={labelStrategy}
-              onStrategyChange={setLabelStrategy}
+              onStrategyChange={handleStrategyChange}
+              hasClassifications={rawClassificationsByTrace !== null}
               labelRowCount={labelRowCount}
               onLabelRowCountChange={setLabelRowCount}
               delimiter={delimiter}
