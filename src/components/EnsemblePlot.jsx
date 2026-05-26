@@ -205,11 +205,20 @@ export const MIN_BAND_LINE_OPACITY = 0.16
 const BAND_OPACITY_SCALE = 0.7
 const MIN_STYLE_MULTIPLIER = 0.6
 const MAX_STYLE_MULTIPLIER = 1.8
+const DEFAULT_STYLE_MULTIPLIER = 1
 
 export function resolveLineStyling(lineCount, showBands, lineStyleControls = {}) {
   const safeCount = Number.isFinite(lineCount) && lineCount > 0 ? lineCount : 1
-  const thicknessMultiplier = clamp(lineStyleControls?.thickness ?? 1, MIN_STYLE_MULTIPLIER, MAX_STYLE_MULTIPLIER)
-  const opacityMultiplier = clamp(lineStyleControls?.opacity ?? 1, MIN_STYLE_MULTIPLIER, MAX_STYLE_MULTIPLIER)
+  const thicknessMultiplier = clamp(
+    lineStyleControls?.thickness ?? DEFAULT_STYLE_MULTIPLIER,
+    MIN_STYLE_MULTIPLIER,
+    MAX_STYLE_MULTIPLIER
+  )
+  const opacityMultiplier = clamp(
+    lineStyleControls?.opacity ?? DEFAULT_STYLE_MULTIPLIER,
+    MIN_STYLE_MULTIPLIER,
+    MAX_STYLE_MULTIPLIER
+  )
   const width = clamp((LINE_WIDTH_SCALE / Math.sqrt(safeCount)) * thicknessMultiplier, MIN_LINE_WIDTH, MAX_LINE_WIDTH)
   const baseOpacity = clamp((LINE_OPACITY_SCALE / Math.sqrt(safeCount)) * opacityMultiplier, MIN_LINE_OPACITY, MAX_LINE_OPACITY)
   const opacity = showBands ? Math.max(MIN_BAND_LINE_OPACITY, baseOpacity * BAND_OPACITY_SCALE) : baseOpacity

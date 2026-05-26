@@ -171,6 +171,20 @@ describe('parseFiniteLabelNumber', () => {
     it('returns null when targeted tied segment is non-numeric', () => {
       expect(parseFiniteLabelNumberForCategoryValue('10 | high', 'A + B', 'B')).toBeNull()
     })
+
+    it('returns null when tied value has fewer segments than the target category index', () => {
+      expect(parseFiniteLabelNumberForCategoryValue('10', 'A + B', 'B')).toBeNull()
+    })
+
+    it('handles null and undefined raw values', () => {
+      expect(parseFiniteLabelNumberForCategoryValue(null, 'A + B', 'A')).toBeNull()
+      expect(parseFiniteLabelNumberForCategoryValue(undefined, 'A + B', 'A')).toBeNull()
+    })
+
+    it('falls back to direct parsing when target category is not part of the tied category', () => {
+      expect(parseFiniteLabelNumberForCategoryValue('10 | 80', 'A + B', 'C')).toBeNull()
+      expect(parseFiniteLabelNumberForCategoryValue('42', 'A + B', 'C')).toBe(42)
+    })
   })
 
   it('parses actual numbers', () => {
