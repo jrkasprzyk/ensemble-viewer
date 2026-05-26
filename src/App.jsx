@@ -17,8 +17,10 @@ import {
   parseFiniteLabelNumber,
   parseFiniteLabelNumberForCategoryValue,
   buildVisibleColumnSet,
+  buildBundledLabels,
+  BUNDLED_CATEGORY,
 } from './lib/labels.js'
-import { buildColorMap, buildSequentialColorMap } from './lib/palette.js'
+import { buildColorMap, buildSequentialColorMap, BUNDLED_COLOR_MAP } from './lib/palette.js'
 import { DEFAULT_STYLE_MULTIPLIER } from './lib/plotStyle.js'
 
 const EMPTY_LABEL = '⟨empty⟩'
@@ -53,6 +55,12 @@ export default function App() {
   const [tieCategoryA, setTieCategoryA] = useState('')
   const [tieCategoryB, setTieCategoryB] = useState('')
 
+  // Classification bundling
+  const [selectedHorizons, setSelectedHorizons] = useState(new Set())
+  const [horizonLogic, setHorizonLogic] = useState('OR')
+  const [bundledFilter, setBundledFilter] = useState(new Set(['Failure', 'Success']))
+  const [classificationFilter, setClassificationFilter] = useState(new Set(['Failure', 'Success']))
+
   // Sort / range filtering
   const [sortCategory, setSortCategory] = useState('')
   const [sortRange, setSortRange] = useState(null)
@@ -79,6 +87,10 @@ export default function App() {
       setColorBy(null)
       setLabelRowCount(parsed.labelRowCount)
       setRawClassificationsByTrace(null)
+      setSelectedHorizons(new Set())
+      setHorizonLogic('OR')
+      setBundledFilter(new Set(['Failure', 'Success']))
+      setClassificationFilter(new Set(['Failure', 'Success']))
 
       if (parsed.labelRowCount > 0 && Object.keys(parsed.labelsByColumn).length) {
         setLabelsByColumn(parsed.labelsByColumn)
@@ -166,11 +178,32 @@ export default function App() {
     setLabelStrategy('classifications')
   }, [classificationLabels])
 
+  const classificationSchemeNames = useMemo(() => {
+    if (!rawClassificationsByTrace) return []
+    const first = Object.values(rawClassificationsByTrace)[0] || {}
+    return Object.keys(first)
+  }, [rawClassificationsByTrace])
+
+  const mergedLabelsByColumn = useMemo(() => {
+    if (!labelsByColumn || !selectedHorizons.size) return labelsByColumn
+    try {
+      const bundled = buildBundledLabels(labelsByColumn, [...selectedHorizons], horizonLogic)
+      const out = {}
+      for (const col of Object.keys(labelsByColumn)) {
+        out[col] = { ...(labelsByColumn[col] || {}), ...(bundled[col] || {}) }
+      }
+      return out
+    } catch (e) {
+      console.error('buildBundledLabels:', e)
+      return labelsByColumn
+    }
+  }, [labelsByColumn, selectedHorizons, horizonLogic])
+
   const baseCategoryValues = useMemo(() => summarizeLabels(labelsByColumn), [labelsByColumn])
 
   const effectiveLabelsByColumn = useMemo(() => {
-    return tieLabelCategories(labelsByColumn, [tieCategoryA, tieCategoryB])
-  }, [labelsByColumn, tieCategoryA, tieCategoryB])
+    return tieLabelCategories(mergedLabelsByColumn, [tieCategoryA, tieCategoryB])
+  }, [mergedLabelsByColumn, tieCategoryA, tieCategoryB])
 
   const categoryValues = useMemo(() => summarizeLabels(effectiveLabelsByColumn), [effectiveLabelsByColumn])
 
@@ -187,6 +220,7 @@ export default function App() {
 
   const colorMap = useMemo(() => {
     if (!colorBy || !categoryValues[colorBy]) return {}
+    if (colorBy === BUNDLED_CATEGORY) return BUNDLED_COLOR_MAP
     const vals = categoryValues[colorBy]
     const toColorNumber = (v) => parseFiniteLabelNumberForCategoryValue(v, colorBy, sortCategory)
     const allNumeric = vals.every((v) => toColorNumber(v) !== null)
@@ -196,6 +230,19 @@ export default function App() {
     }
     return buildColorMap([...vals].sort())
   }, [colorBy, categoryValues, sortCategory])
+
+  const effectiveActiveByCategory = useMemo(() => {
+    if (!classificationSchemeNames.length) return activeByCategory
+    const overrides = {}
+    const allValues = new Set(['Failure', 'Success'])
+    for (const scheme of classificationSchemeNames) {
+      overrides[scheme] = colorBy === scheme ? classificationFilter : allValues
+    }
+    if (selectedHorizons.size) {
+      overrides[BUNDLED_CATEGORY] = bundledFilter
+    }
+    return { ...activeByCategory, ...overrides }
+  }, [activeByCategory, classificationSchemeNames, colorBy, classificationFilter, bundledFilter, selectedHorizons])
 
   const orderedColumns = useMemo(() => {
     if (!sortCategory || !numericDomain) return columns
@@ -242,12 +289,12 @@ export default function App() {
       columns,
       labelsByColumn: effectiveLabelsByColumn,
       categoryValues,
-      activeByCategory,
+      activeByCategory: effectiveActiveByCategory,
       sortRange,
       sortNumericDomain: numericDomain,
       sortableNumberByColumn,
     })
-  }, [columns, effectiveLabelsByColumn, activeByCategory, categoryValues, sortRange, numericDomain, sortableNumberByColumn])
+  }, [columns, effectiveLabelsByColumn, effectiveActiveByCategory, categoryValues, sortRange, numericDomain, sortableNumberByColumn])
 
   const plotGroups = useMemo(() => {
     if (!splitBy || !categoryValues[splitBy]) {
@@ -281,6 +328,34 @@ export default function App() {
       const cur = prev[cat] || new Set()
       const next = { ...prev }
       next[cat] = cur.size === all.size ? new Set() : all
+      return next
+    })
+  }
+
+  function toggleHorizon(scheme) {
+    setSelectedHorizons((prev) => {
+      const next = new Set(prev)
+      next.has(scheme) ? next.delete(scheme) : next.add(scheme)
+      return next
+    })
+  }
+
+  function deselectAllHorizons() {
+    setSelectedHorizons(new Set())
+  }
+
+  function toggleBundledFilter(val) {
+    setBundledFilter((prev) => {
+      const next = new Set(prev)
+      next.has(val) ? next.delete(val) : next.add(val)
+      return next
+    })
+  }
+
+  function toggleClassificationFilter(val) {
+    setClassificationFilter((prev) => {
+      const next = new Set(prev)
+      next.has(val) ? next.delete(val) : next.add(val)
       return next
     })
   }
@@ -362,6 +437,16 @@ export default function App() {
               numericCategories={numericCategories}
               sortRangeControl={sortCategory && numericDomain ? { domain: numericDomain, value: sortRange ?? numericDomain } : null}
               onSortRangeChange={setSortRange}
+              classificationSchemeNames={classificationSchemeNames}
+              selectedHorizons={selectedHorizons}
+              horizonLogic={horizonLogic}
+              bundledFilter={bundledFilter}
+              classificationFilter={classificationFilter}
+              onHorizonToggle={toggleHorizon}
+              onHorizonDeselectAll={deselectAllHorizons}
+              onHorizonLogicChange={setHorizonLogic}
+              onBundledFilterChange={toggleBundledFilter}
+              onClassificationFilterChange={toggleClassificationFilter}
             />
           )}
 

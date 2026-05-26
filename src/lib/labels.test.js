@@ -12,6 +12,8 @@ import {
   deriveSchemeNames,
   parseClassificationBundle,
   applyClassificationMapping,
+  buildBundledLabels,
+  BUNDLED_CATEGORY,
 } from './labels.js'
 
 // ---------------------------------------------------------------------------
@@ -454,6 +456,60 @@ describe('applyClassificationMapping', () => {
   it('silently skips columns with no numeric suffix', () => {
     const result = applyClassificationMapping(raw, ['date', 'trace_1'])
     expect(Object.keys(result)).toEqual(['trace_1'])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// buildBundledLabels
+// ---------------------------------------------------------------------------
+describe('buildBundledLabels', () => {
+  const labels = {
+    col1: { EOWY1: 'Failure', EOWY2: 'Failure' },
+    col2: { EOWY1: 'Success', EOWY2: 'Failure' },
+    col3: { EOWY1: 'Success', EOWY2: 'Success' },
+  }
+
+  it('OR: single horizon Failure → Failure, Success → Success', () => {
+    const result = buildBundledLabels(labels, ['EOWY1'], 'OR')
+    expect(result.col1[BUNDLED_CATEGORY]).toBe('Failure')
+    expect(result.col3[BUNDLED_CATEGORY]).toBe('Success')
+  })
+
+  it('OR: any horizon Failure → Failure', () => {
+    const result = buildBundledLabels(labels, ['EOWY1', 'EOWY2'], 'OR')
+    expect(result.col1[BUNDLED_CATEGORY]).toBe('Failure')
+    expect(result.col2[BUNDLED_CATEGORY]).toBe('Failure')
+  })
+
+  it('OR: all Success → Success', () => {
+    const result = buildBundledLabels(labels, ['EOWY1', 'EOWY2'], 'OR')
+    expect(result.col3[BUNDLED_CATEGORY]).toBe('Success')
+  })
+
+  it('AND: all Failure → Failure', () => {
+    const result = buildBundledLabels(labels, ['EOWY1', 'EOWY2'], 'AND')
+    expect(result.col1[BUNDLED_CATEGORY]).toBe('Failure')
+  })
+
+  it('AND: mixed → Success', () => {
+    const result = buildBundledLabels(labels, ['EOWY1', 'EOWY2'], 'AND')
+    expect(result.col2[BUNDLED_CATEGORY]).toBe('Success')
+  })
+
+  it('AND: all Success → Success', () => {
+    const result = buildBundledLabels(labels, ['EOWY1', 'EOWY2'], 'AND')
+    expect(result.col3[BUNDLED_CATEGORY]).toBe('Success')
+  })
+
+  it('empty selectedHorizons → empty output', () => {
+    const result = buildBundledLabels(labels, [], 'OR')
+    expect(result).toEqual({})
+  })
+
+  it('missing horizon → throws Error', () => {
+    expect(() => buildBundledLabels(labels, ['EOWY1', 'EOWY3'], 'OR')).toThrow(
+      'Horizon "EOWY3" missing from column "col1"'
+    )
   })
 })
 
