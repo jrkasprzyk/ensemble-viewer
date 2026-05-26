@@ -53,7 +53,7 @@ export default function LabelControls({
     }
     setSortMinDraft(String(sortRangeControl.value.min))
     setSortMaxDraft(String(sortRangeControl.value.max))
-  }, [sortRangeControl?.value.min, sortRangeControl?.value.max, Boolean(sortRangeControl)])
+  }, [sortRangeControl?.value.min, sortRangeControl?.value.max])
 
   return (
     <div className="flex flex-col gap-3 text-xs">
