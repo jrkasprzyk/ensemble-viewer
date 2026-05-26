@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { OKABE_ITO } from '../lib/palette.js'
 import { parseFiniteLabelNumber } from '../lib/labels.js'
+import { DEFAULT_STYLE_MULTIPLIER, MIN_STYLE_MULTIPLIER, MAX_STYLE_MULTIPLIER } from '../lib/plotStyle.js'
 
 /**
  * LabelControls
@@ -98,8 +99,8 @@ export default function LabelControls({
             <span className="font-mono text-[10px]">{lineStyleControls.thickness.toFixed(2)}×</span>
             <input
               type="range"
-              min="0.6"
-              max="1.8"
+              min={MIN_STYLE_MULTIPLIER}
+              max={MAX_STYLE_MULTIPLIER}
               step="0.05"
               value={lineStyleControls.thickness}
               onChange={(e) => onLineStyleControlsChange({
@@ -112,8 +113,8 @@ export default function LabelControls({
             <span className="font-mono text-[10px]">{lineStyleControls.opacity.toFixed(2)}×</span>
             <input
               type="range"
-              min="0.6"
-              max="1.8"
+              min={MIN_STYLE_MULTIPLIER}
+              max={MAX_STYLE_MULTIPLIER}
               step="0.05"
               value={lineStyleControls.opacity}
               onChange={(e) => onLineStyleControlsChange({
@@ -124,7 +125,7 @@ export default function LabelControls({
             />
             <button
               type="button"
-              onClick={() => onLineStyleControlsChange({ thickness: 1, opacity: 1 })}
+              onClick={() => onLineStyleControlsChange({ thickness: DEFAULT_STYLE_MULTIPLIER, opacity: DEFAULT_STYLE_MULTIPLIER })}
               className="justify-self-start text-[10px] font-mono uppercase tracking-wider text-muted hover:text-ink"
             >
               Reset line styling

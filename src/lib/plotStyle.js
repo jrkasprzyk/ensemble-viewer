@@ -1,0 +1,3 @@
+export const MIN_STYLE_MULTIPLIER = 0.6
+export const MAX_STYLE_MULTIPLIER = 1.8
+export const DEFAULT_STYLE_MULTIPLIER = 1

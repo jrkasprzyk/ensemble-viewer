@@ -7,6 +7,7 @@ const PlotlyLib = Plotly?.default ?? Plotly
 const Plot = createPlotlyComponent(PlotlyLib)
 import { NEUTRAL_GRAY } from '../lib/palette.js'
 import { computeGroupStats } from '../lib/stats.js'
+import { DEFAULT_STYLE_MULTIPLIER, MIN_STYLE_MULTIPLIER, MAX_STYLE_MULTIPLIER } from '../lib/plotStyle.js'
 
 /**
  * EnsemblePlot
@@ -203,9 +204,6 @@ const MIN_LINE_OPACITY = 0.2
 const MAX_LINE_OPACITY = 0.72
 export const MIN_BAND_LINE_OPACITY = 0.16
 const BAND_OPACITY_SCALE = 0.7
-const MIN_STYLE_MULTIPLIER = 0.6
-const MAX_STYLE_MULTIPLIER = 1.8
-const DEFAULT_STYLE_MULTIPLIER = 1
 
 export function resolveLineStyling(lineCount, showBands, lineStyleControls = {}) {
   const safeCount = Number.isFinite(lineCount) && lineCount > 0 ? lineCount : 1

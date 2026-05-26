@@ -16,6 +16,9 @@
  * The three strategies below all produce that same shape from different inputs.
  */
 
+const TIED_CATEGORY_DELIMITER = ' + '
+const TIED_VALUE_DELIMITER = ' | '
+
 /**
  * Parse labels from column names using a delimiter character.
  *
@@ -134,7 +137,7 @@ export function tieLabelCategories(labelsByColumn, categories = []) {
   const cats = [...new Set(categories.filter(Boolean))]
   if (cats.length < 2) return labelsByColumn
 
-  const tiedName = cats.join(' + ')
+  const tiedName = cats.join(TIED_CATEGORY_DELIMITER)
   const out = {}
 
   for (const [col, labels] of Object.entries(labelsByColumn)) {
@@ -143,7 +146,7 @@ export function tieLabelCategories(labelsByColumn, categories = []) {
       out[col] = labels
       continue
     }
-    const tiedValue = cats.map((cat) => nextLabels[cat]).join(' | ')
+    const tiedValue = cats.map((cat) => nextLabels[cat]).join(TIED_VALUE_DELIMITER)
 
     for (const cat of cats) delete nextLabels[cat]
     nextLabels[tiedName] = tiedValue
@@ -181,15 +184,15 @@ export function parseFiniteLabelNumber(value) {
 export function parseFiniteLabelNumberForCategoryValue(rawValue, categoryName, targetCategory) {
   if (rawValue === null || rawValue === undefined || rawValue === '') return null
 
-  if (!targetCategory || !categoryName || !categoryName.includes(' + ')) {
+  if (!targetCategory || !categoryName || !categoryName.includes(TIED_CATEGORY_DELIMITER)) {
     return parseFiniteLabelNumber(rawValue)
   }
 
-  const parts = categoryName.split(' + ')
+  const parts = categoryName.split(TIED_CATEGORY_DELIMITER)
   const idx = parts.indexOf(targetCategory)
   if (idx < 0) return parseFiniteLabelNumber(rawValue)
 
-  const valueParts = String(rawValue ?? '').split(' | ')
+  const valueParts = String(rawValue ?? '').split(TIED_VALUE_DELIMITER)
   return parseFiniteLabelNumber(valueParts[idx] ?? '')
 }
 

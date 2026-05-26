@@ -19,6 +19,7 @@ import {
   buildVisibleColumnSet,
 } from './lib/labels.js'
 import { buildColorMap, buildSequentialColorMap } from './lib/palette.js'
+import { DEFAULT_STYLE_MULTIPLIER } from './lib/plotStyle.js'
 
 const EMPTY_LABEL = '⟨empty⟩'
 
@@ -44,7 +45,10 @@ export default function App() {
   const [showBands, setShowBands] = useState(false)
   const [xAxisLabel, setXAxisLabel] = useState('')
   const [yAxisLabel, setYAxisLabel] = useState('')
-  const [lineStyleControls, setLineStyleControls] = useState({ thickness: 1, opacity: 1 })
+  const [lineStyleControls, setLineStyleControls] = useState({
+    thickness: DEFAULT_STYLE_MULTIPLIER,
+    opacity: DEFAULT_STYLE_MULTIPLIER,
+  })
   const [splitBy, setSplitBy] = useState('')
   const [tieCategoryA, setTieCategoryA] = useState('')
   const [tieCategoryB, setTieCategoryB] = useState('')
