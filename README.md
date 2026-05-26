@@ -10,6 +10,8 @@ A browser-based tool for visualising large ensemble timeseries datasets. Drop in
 - **Interactive filtering** — category-based trace filtering and colour grouping
 - **Custom plot display** — optional axis label overrides, label tying, and multi-panel split views
 - **Summary statistics** — 10th/90th percentile band with mean/median per group
+- **Classification bundle** — attach multiple CSV files to assign label categories to traces by trace number; scheme names derived automatically from filenames
+- **Density-aware line styling** — line width and opacity scale automatically with visible trace count; manual thickness/opacity sliders in the Display panel
 - **Colourblind-safe** — Okabe-Ito palette used throughout
 - **Built-in demo** — load sample data with one click, no file needed
 
@@ -47,6 +49,19 @@ The app supports three ways to attach labels (scenario, model, run ID, etc.) to 
 | **Sidecar CSV** | A separate file mapping column names to labels |
 
 A **sample dataset** is included — click *Load sample data* on the drop-zone to see the app in action.
+
+### Classification bundle
+
+A classification bundle is a set of CSV files that assign label categories to traces by trace number. Each file represents one classification scheme (e.g. drought year, percent-of-average tier).
+
+Each CSV must have exactly two columns:
+
+| Column | Description |
+|---|---|
+| `TraceNumber` | Integer trace number (matched against the numeric suffix of each data column) |
+| `Class` | Class value for that trace under this scheme |
+
+Load a bundle via the **Classification bundle** file input in the drop zone. Scheme names are derived automatically from the filenames by stripping the longest common prefix and suffix across all selected files. The resulting categories appear in the label controls panel like any other label strategy.
 
 ### Stacked header row auto-detection
 
