@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { OKABE_ITO } from '../lib/palette.js'
 import { parseFiniteLabelNumber } from '../lib/labels.js'
 import { DEFAULT_STYLE_MULTIPLIER, MIN_STYLE_MULTIPLIER, MAX_STYLE_MULTIPLIER } from '../lib/plotStyle.js'
@@ -42,6 +42,18 @@ export default function LabelControls({
   onSortRangeChange,
 }) {
   const categoryNames = useMemo(() => Object.keys(categoryValues), [categoryValues])
+  const [sortMinDraft, setSortMinDraft] = useState('')
+  const [sortMaxDraft, setSortMaxDraft] = useState('')
+
+  useEffect(() => {
+    if (!sortRangeControl) {
+      setSortMinDraft('')
+      setSortMaxDraft('')
+      return
+    }
+    setSortMinDraft(String(sortRangeControl.value.min))
+    setSortMaxDraft(String(sortRangeControl.value.max))
+  }, [sortRangeControl?.value.min, sortRangeControl?.value.max, Boolean(sortRangeControl)])
 
   return (
     <div className="flex flex-col gap-3 text-xs">
@@ -197,13 +209,23 @@ export default function LabelControls({
                   <label className="font-mono text-[10px] text-muted">Min</label>
                   <input
                     type="number"
-                    value={sortRangeControl.value.min}
+                    value={sortMinDraft}
                     min={sortRangeControl.domain.min}
                     max={sortRangeControl.value.max}
                     step="any"
                     onChange={(e) => {
-                      const min = Math.min(Number(e.target.value), sortRangeControl.value.max)
+                      const raw = e.target.value
+                      setSortMinDraft(raw)
+                      if (raw === '') return
+                      const parsed = Number(raw)
+                      if (!Number.isFinite(parsed)) return
+                      const min = Math.min(parsed, sortRangeControl.value.max)
                       onSortRangeChange({ min, max: sortRangeControl.value.max })
+                    }}
+                    onBlur={() => {
+                      if (sortMinDraft === '' || !Number.isFinite(Number(sortMinDraft))) {
+                        setSortMinDraft(String(sortRangeControl.value.min))
+                      }
                     }}
                     className="px-2 py-1 border border-rule bg-paper font-mono"
                   />
@@ -212,13 +234,23 @@ export default function LabelControls({
                   <label className="font-mono text-[10px] text-muted">Max</label>
                   <input
                     type="number"
-                    value={sortRangeControl.value.max}
+                    value={sortMaxDraft}
                     min={sortRangeControl.value.min}
                     max={sortRangeControl.domain.max}
                     step="any"
                     onChange={(e) => {
-                      const max = Math.max(Number(e.target.value), sortRangeControl.value.min)
+                      const raw = e.target.value
+                      setSortMaxDraft(raw)
+                      if (raw === '') return
+                      const parsed = Number(raw)
+                      if (!Number.isFinite(parsed)) return
+                      const max = Math.max(parsed, sortRangeControl.value.min)
                       onSortRangeChange({ min: sortRangeControl.value.min, max })
+                    }}
+                    onBlur={() => {
+                      if (sortMaxDraft === '' || !Number.isFinite(Number(sortMaxDraft))) {
+                        setSortMaxDraft(String(sortRangeControl.value.max))
+                      }
                     }}
                     className="px-2 py-1 border border-rule bg-paper font-mono"
                   />
