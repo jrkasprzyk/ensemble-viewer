@@ -37,6 +37,7 @@ export default function LabelStrategyPicker({
               ['headers', 'Stacked header rows in file'],
               ['names', 'Parse from column names'],
               ['sidecar', 'Sidecar CSV (upload above)'],
+              ...(strategy === 'classifications' ? [['classifications', 'Classification bundle']] : []),
             ].map(([val, label]) => (
               <label key={val} className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -113,6 +114,14 @@ export default function LabelStrategyPicker({
               Upload a sidecar CSV using the attach button in the file area. First
               column should match data column names; remaining columns are
               treated as categories.
+            </p>
+          )}
+
+          {strategy === 'classifications' && (
+            <p className="text-xs text-muted">
+              Classification bundle active. Each file is a separate scheme; use
+              the checkboxes below to filter by class. Load a sidecar or switch
+              to "Parse from column names" to replace.
             </p>
           )}
         </div>

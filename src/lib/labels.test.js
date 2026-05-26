@@ -8,6 +8,9 @@ import {
   parseFiniteLabelNumber,
   buildSortMetadata,
   buildVisibleColumnSet,
+  deriveSchemeNames,
+  parseClassificationBundle,
+  applyClassificationMapping,
 } from './labels.js'
 
 // ---------------------------------------------------------------------------
@@ -318,6 +321,105 @@ describe('buildVisibleColumnSet', () => {
     })
 
     expect([...result]).toEqual(['run2'])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// deriveSchemeNames
+// ---------------------------------------------------------------------------
+describe('deriveSchemeNames', () => {
+  const NINE_FILES = [
+    'SE_Oct2025_vTC_Trace_Classes_P3500_EOWY1.txt',
+    'SE_Oct2025_vTC_Trace_Classes_P3500_EOWY1_20pct.txt',
+    'SE_Oct2025_vTC_Trace_Classes_P3500_EOWY1_30pct.txt',
+    'SE_Oct2025_vTC_Trace_Classes_P3500_EOWY2.txt',
+    'SE_Oct2025_vTC_Trace_Classes_P3500_EOWY2_10pct.txt',
+    'SE_Oct2025_vTC_Trace_Classes_P3500_EOWY2_20pct.txt',
+    'SE_Oct2025_vTC_Trace_Classes_P3500_EOWY5.txt',
+    'SE_Oct2025_vTC_Trace_Classes_P3500_EOWY5_10pct.txt',
+    'SE_Oct2025_vTC_Trace_Classes_P3500_EOWY5_20pct.txt',
+  ]
+
+  it('derives short scheme names from the 9 CRMMS classification files', () => {
+    expect(deriveSchemeNames(NINE_FILES)).toEqual([
+      'EOWY1',
+      'EOWY1_20pct',
+      'EOWY1_30pct',
+      'EOWY2',
+      'EOWY2_10pct',
+      'EOWY2_20pct',
+      'EOWY5',
+      'EOWY5_10pct',
+      'EOWY5_20pct',
+    ])
+  })
+
+  it('falls back to basename without extension when stripping yields empty', () => {
+    const result = deriveSchemeNames(['identical.txt', 'identical.txt'])
+    expect(result).toEqual(['identical', 'identical'])
+  })
+
+  it('strips extension only for a single file', () => {
+    expect(deriveSchemeNames(['myscheme.txt'])).toEqual(['myscheme'])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// parseClassificationBundle
+// ---------------------------------------------------------------------------
+describe('parseClassificationBundle', () => {
+  function fakeFile(name, csvText) {
+    return { name, text: () => Promise.resolve(csvText) }
+  }
+
+  it('parses two files into a raw trace-keyed map', async () => {
+    const f1 = fakeFile('prefix_A.txt', '"TraceNumber","Class"\n1,Success\n2,Failure\n')
+    const f2 = fakeFile('prefix_B.txt', '"TraceNumber","Class"\n1,Failure\n2,Success\n')
+    const result = await parseClassificationBundle([f1, f2])
+    expect(result['1']).toEqual({ A: 'Success', B: 'Failure' })
+    expect(result['2']).toEqual({ A: 'Failure', B: 'Success' })
+  })
+
+  it('throws when TraceNumber column is missing', async () => {
+    const f = fakeFile('scheme.txt', '"ID","Class"\n1,Success\n')
+    await expect(parseClassificationBundle([f])).rejects.toThrow(
+      'Classification file "scheme.txt" is missing column \'TraceNumber\''
+    )
+  })
+
+  it('throws when Class column is missing', async () => {
+    const f = fakeFile('scheme.txt', '"TraceNumber","Label"\n1,Success\n')
+    await expect(parseClassificationBundle([f])).rejects.toThrow(
+      'Classification file "scheme.txt" is missing column \'Class\''
+    )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// applyClassificationMapping
+// ---------------------------------------------------------------------------
+describe('applyClassificationMapping', () => {
+  const raw = {
+    '1': { schemeA: 'Success', schemeB: 'Failure' },
+    '2': { schemeA: 'Failure', schemeB: 'Success' },
+    '99': { schemeA: 'Success', schemeB: 'Success' },
+  }
+
+  it('maps trace numbers to columns via numeric suffix', () => {
+    const result = applyClassificationMapping(raw, ['trace_1', 'trace_2', 'trace_99'])
+    expect(result['trace_1']).toEqual({ schemeA: 'Success', schemeB: 'Failure' })
+    expect(result['trace_2']).toEqual({ schemeA: 'Failure', schemeB: 'Success' })
+    expect(result['trace_99']).toEqual({ schemeA: 'Success', schemeB: 'Success' })
+  })
+
+  it('omits columns with no matching trace number', () => {
+    const result = applyClassificationMapping(raw, ['trace_1', 'trace_400'])
+    expect(Object.keys(result)).toEqual(['trace_1'])
+  })
+
+  it('silently skips columns with no numeric suffix', () => {
+    const result = applyClassificationMapping(raw, ['date', 'trace_1'])
+    expect(Object.keys(result)).toEqual(['trace_1'])
   })
 })
 

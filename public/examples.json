@@ -4,34 +4,69 @@
     "label": "Sample Ensemble",
     "description": "Small synthetic ensemble demo dataset",
     "entry": "/sample-data/ensemble.csv",
-    "sidecar": null
+    "sidecar": null,
+    "classifications": null
   },
   {
     "id": "sample-ensemble-anon",
     "label": "Sample Ensemble (anonymous)",
     "description": "Sample dataset with anonymous columns and a labels sidecar",
     "entry": "/sample-data/ensemble_anon.csv",
-    "sidecar": "/sample-data/ensemble_anon_labels.csv"
+    "sidecar": "/sample-data/ensemble_anon_labels.csv",
+    "classifications": null
   },
   {
     "id": "crmms-powell-elevation",
     "label": "CRMMS: Lake Powell Pool Elevation",
     "description": "Lake Powell pool elevation ensemble traces",
     "entry": "/crmms-es/res_Powell_Pool_Elevation.csv",
-    "sidecar": null
+    "sidecar": null,
+    "classifications": [
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY1.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY1_20pct.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY1_30pct.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY2.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY2_10pct.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY2_20pct.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY5.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY5_10pct.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY5_20pct.txt"
+    ]
   },
   {
     "id": "crmms-powell-evap",
     "label": "CRMMS: Lake Powell Evaporation",
     "description": "Lake Powell evaporation ensemble traces",
     "entry": "/crmms-es/res_Powell_Evaporation.csv",
-    "sidecar": null
+    "sidecar": null,
+    "classifications": [
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY1.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY1_20pct.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY1_30pct.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY2.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY2_10pct.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY2_20pct.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY5.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY5_10pct.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY5_20pct.txt"
+    ]
   },
   {
     "id": "crmms-powell-inflow",
     "label": "CRMMS: Unregulated Inflow to Lake Powell",
     "description": "Unregulated inflow ensemble traces for Lake Powell",
     "entry": "/crmms-es/streamflow_PowellInflow_Unregulated.csv",
-    "sidecar": null
+    "sidecar": null,
+    "classifications": [
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY1.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY1_20pct.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY1_30pct.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY2.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY2_10pct.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY2_20pct.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY5.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY5_10pct.txt",
+      "/crmms-es/SE_Oct2025_vTC_Trace_Classes_P3500_EOWY5_20pct.txt"
+    ]
   }
 ]

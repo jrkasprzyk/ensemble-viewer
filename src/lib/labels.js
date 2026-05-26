@@ -255,6 +255,112 @@ export function buildVisibleColumnSet({
   return out
 }
 
+// ---------------------------------------------------------------------------
+// Classification bundle parsing
+// ---------------------------------------------------------------------------
+
+/**
+ * Strip common prefix and suffix from a list of basenames to produce short
+ * scheme names. Falls back to the full basename when stripping leaves an
+ * empty string.
+ *
+ * @param {string[]} fileNames
+ * @returns {string[]}
+ */
+export function deriveSchemeNames(fileNames) {
+  const bases = fileNames.map((n) => n.replace(/\.[^.]+$/, ''))
+
+  function longestCommonPrefix(strs) {
+    if (!strs.length) return ''
+    let prefix = strs[0]
+    for (let i = 1; i < strs.length; i++) {
+      while (!strs[i].startsWith(prefix)) {
+        prefix = prefix.slice(0, -1)
+        if (!prefix) return ''
+      }
+    }
+    return prefix
+  }
+
+  function longestCommonSuffix(strs) {
+    const reversed = strs.map((s) => [...s].reverse().join(''))
+    return [...longestCommonPrefix(reversed)].reverse().join('')
+  }
+
+  const rawPrefix = longestCommonPrefix(bases)
+  // Trim prefix back to last separator so names start at a word boundary.
+  const sepIdx = Math.max(rawPrefix.lastIndexOf('_'), rawPrefix.lastIndexOf('-'), rawPrefix.lastIndexOf('.'))
+  const prefix = sepIdx >= 0 ? rawPrefix.slice(0, sepIdx + 1) : rawPrefix
+
+  const stripped = bases.map((b) => b.slice(prefix.length))
+
+  const rawSuffix = longestCommonSuffix(stripped)
+  const sufSepIdx = Math.max(rawSuffix.indexOf('_'), rawSuffix.indexOf('-'), rawSuffix.indexOf('.'))
+  const suffix = sufSepIdx >= 0 ? rawSuffix.slice(sufSepIdx) : rawSuffix
+
+  const result = stripped.map((s) => s.slice(0, s.length - suffix.length))
+
+  return result.map((r, i) => r || bases[i])
+}
+
+/**
+ * Parse a bundle of classification `.txt` files (CSV format `"TraceNumber","Class"`).
+ * Returns a raw map keyed by string trace number.
+ *
+ * @param {File[]} files
+ * @returns {Promise<Record<string, Record<string, string>>>}
+ */
+export async function parseClassificationBundle(files) {
+  const Papa = (await import('papaparse')).default
+  const schemeNames = deriveSchemeNames(files.map((f) => f.name))
+  const rawByTraceNum = {}
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i]
+    const schemeName = schemeNames[i]
+    const text = await file.text()
+    const { data } = Papa.parse(text, { header: true, skipEmptyLines: true })
+    if (!data.length) continue
+
+    const keys = Object.keys(data[0])
+    for (const col of ['TraceNumber', 'Class']) {
+      if (!keys.includes(col))
+        throw new Error(`Classification file "${file.name}" is missing column '${col}'`)
+    }
+
+    for (const row of data) {
+      const traceNum = String(row['TraceNumber'])
+      if (!rawByTraceNum[traceNum]) rawByTraceNum[traceNum] = {}
+      rawByTraceNum[traceNum][schemeName] = String(row['Class'] ?? '')
+    }
+  }
+
+  return rawByTraceNum
+}
+
+/**
+ * Map a raw trace-keyed classification map onto data column names.
+ * Columns whose name has no numeric suffix, or whose suffix has no entry in
+ * `rawByTraceNum`, are omitted from the output.
+ *
+ * @param {Record<string, Record<string, string>>} rawByTraceNum
+ * @param {string[]} columns
+ * @returns {Record<string, Record<string, string>>}  labelsByColumn shape
+ */
+export function applyClassificationMapping(rawByTraceNum, columns) {
+  const out = {}
+  for (const col of columns) {
+    const match = col.match(/(\d+)$/)
+    if (!match) continue
+    const schemeLabels = rawByTraceNum[match[1]]
+    if (!schemeLabels) continue
+    out[col] = { ...schemeLabels }
+  }
+  return out
+}
+
+// ---------------------------------------------------------------------------
+
 /**
  * Auto-detect whether the index column holds dates or plain numbers.
  * Returns 'datetime' | 'numeric'.
