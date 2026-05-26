@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { MIN_BAND_LINE_OPACITY, resolveLineStyling } from './EnsemblePlot.jsx'
+import { MIN_BAND_LINE_OPACITY, resolveLineStyling } from '../lib/plotStyle.js'
 
 describe('resolveLineStyling', () => {
   it('increases line thickness and opacity when fewer lines are visible', () => {
@@ -19,8 +19,9 @@ describe('resolveLineStyling', () => {
   })
 
   it('applies line style multipliers from controls', () => {
-    const base = resolveLineStyling(40, false, { thickness: 1, opacity: 1 })
-    const boosted = resolveLineStyling(40, false, { thickness: 1.5, opacity: 1.5 })
+    // lineCount=100 keeps base width (1.8) below the cap so boosted (2.7) is distinguishable
+    const base = resolveLineStyling(100, false, { thickness: 1, opacity: 1 })
+    const boosted = resolveLineStyling(100, false, { thickness: 1.5, opacity: 1.5 })
 
     expect(boosted.lineWidth).toBeGreaterThan(base.lineWidth)
     expect(boosted.opacity).toBeGreaterThan(base.opacity)

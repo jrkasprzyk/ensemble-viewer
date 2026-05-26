@@ -95,9 +95,10 @@ export default function LabelControls({
             Line styling
           </summary>
           <div className="mt-2 grid grid-cols-[1fr_auto] gap-2 items-center">
-            <label className="font-mono text-[10px] text-muted">Thickness</label>
+            <label htmlFor="line-thickness" className="font-mono text-[10px] text-muted">Thickness</label>
             <span className="font-mono text-[10px]">{lineStyleControls.thickness.toFixed(2)}×</span>
             <input
+              id="line-thickness"
               type="range"
               min={MIN_STYLE_MULTIPLIER}
               max={MAX_STYLE_MULTIPLIER}
@@ -109,9 +110,10 @@ export default function LabelControls({
               })}
               className="col-span-2 accent-accent"
             />
-            <label className="font-mono text-[10px] text-muted">Opacity</label>
+            <label htmlFor="line-opacity" className="font-mono text-[10px] text-muted">Opacity</label>
             <span className="font-mono text-[10px]">{lineStyleControls.opacity.toFixed(2)}×</span>
             <input
+              id="line-opacity"
               type="range"
               min={MIN_STYLE_MULTIPLIER}
               max={MAX_STYLE_MULTIPLIER}

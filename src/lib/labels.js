@@ -176,7 +176,7 @@ export function parseFiniteLabelNumber(value) {
  * its parts, parse that corresponding value from `rawValue`. Otherwise, parse
  * `rawValue` directly.
  *
- * @param {string} rawValue
+ * @param {string|null|undefined} rawValue
  * @param {string} categoryName
  * @param {string} targetCategory
  * @returns {number|null}
@@ -192,7 +192,7 @@ export function parseFiniteLabelNumberForCategoryValue(rawValue, categoryName, t
   const idx = parts.indexOf(targetCategory)
   if (idx < 0) return parseFiniteLabelNumber(rawValue)
 
-  const valueParts = String(rawValue ?? '').split(TIED_VALUE_DELIMITER)
+  const valueParts = String(rawValue).split(TIED_VALUE_DELIMITER)
   return parseFiniteLabelNumber(valueParts[idx] ?? '')
 }
 
