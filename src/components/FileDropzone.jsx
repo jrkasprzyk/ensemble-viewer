@@ -75,6 +75,7 @@ export default function FileDropzone({ onFile, onSidecar, onClassifications, cla
   function handleFiles(files) {
     if (!files || !files.length) return
     onFile(files[0])
+    if (inputRef.current) inputRef.current.value = ''
   }
 
   async function handleExampleChange(exampleId) {

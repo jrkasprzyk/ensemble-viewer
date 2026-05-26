@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { StrictMode } from 'react'
-import { render, screen, cleanup, waitFor } from '@testing-library/react'
+import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react'
 import FileDropzone from './FileDropzone.jsx'
 
 // Mock the data layer so fetchExamples() resolves deterministically with no
@@ -10,9 +10,10 @@ vi.mock('../lib/sampleData.js', () => ({
   fetchExamples: vi.fn(),
   fetchExampleFile: vi.fn(),
   fetchExampleSidecar: vi.fn(),
+  fetchClassificationBundle: vi.fn(),
 }))
 
-import { fetchExamples } from '../lib/sampleData.js'
+import { fetchExamples, fetchExampleFile } from '../lib/sampleData.js'
 
 const SAMPLE_EXAMPLES = [
   { id: 'demo-a', label: 'Demo A', description: 'first', entry: '/a.csv', sidecar: null },
@@ -82,5 +83,36 @@ describe('FileDropzone — examples manifest loading', () => {
     expect(screen.getByRole('option', { name: 'Examples…' })).toBeTruthy()
 
     errSpy.mockRestore()
+  })
+
+  it('clears the data file input value so local files can be reloaded after selecting an example', async () => {
+    fetchExamples.mockResolvedValue(SAMPLE_EXAMPLES)
+    const exampleFile = new File(['example'], 'example.csv', { type: 'text/csv' })
+    fetchExampleFile.mockResolvedValue(exampleFile)
+    const onFile = vi.fn().mockResolvedValue(undefined)
+
+    const { container } = render(
+      <StrictMode>
+        <FileDropzone onFile={onFile} onSidecar={() => {}} hasData={false} />
+      </StrictMode>
+    )
+
+    await waitFor(() => expect(screen.getByLabelText('Examples').disabled).toBe(false))
+
+    const fileInput = container.querySelector('input[type="file"][accept=".csv,.tsv,.xlsx,.xls"]')
+    expect(fileInput).toBeTruthy()
+    const firstLocalFile = new File(['first'], 'local.csv', { type: 'text/csv' })
+    fireEvent.change(fileInput, { target: { files: [firstLocalFile] } })
+    expect(onFile).toHaveBeenCalledWith(firstLocalFile)
+    expect(fileInput.value).toBe('')
+
+    fireEvent.change(screen.getByLabelText('Examples'), { target: { value: 'demo-a' } })
+    await waitFor(() => expect(fetchExampleFile).toHaveBeenCalledWith('/a.csv'))
+    expect(onFile).toHaveBeenCalledWith(exampleFile)
+
+    const secondLocalFile = new File(['second'], 'local.csv', { type: 'text/csv' })
+    fireEvent.change(fileInput, { target: { files: [secondLocalFile] } })
+    expect(onFile).toHaveBeenCalledWith(secondLocalFile)
+    expect(fileInput.value).toBe('')
   })
 })
