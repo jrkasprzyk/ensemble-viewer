@@ -13,6 +13,7 @@ import { useState } from 'react'
  */
 export default function LabelStrategyPicker({
   strategy, onStrategyChange,
+  hasClassifications,
   labelRowCount, onLabelRowCountChange,
   delimiter, onDelimiterChange,
   categoriesText, onCategoriesTextChange,
@@ -37,7 +38,7 @@ export default function LabelStrategyPicker({
               ['headers', 'Stacked header rows in file'],
               ['names', 'Parse from column names'],
               ['sidecar', 'Sidecar CSV (upload above)'],
-              ...(strategy === 'classifications' ? [['classifications', 'Classification bundle']] : []),
+              ...(hasClassifications || strategy === 'classifications' ? [['classifications', 'Classification bundle']] : []),
             ].map(([val, label]) => (
               <label key={val} className="flex items-center gap-2 cursor-pointer">
                 <input

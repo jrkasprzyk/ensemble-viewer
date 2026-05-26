@@ -313,6 +313,12 @@ export function deriveSchemeNames(fileNames) {
 export async function parseClassificationBundle(files) {
   const Papa = (await import('papaparse')).default
   const schemeNames = deriveSchemeNames(files.map((f) => f.name))
+  const seenNames = new Set()
+  for (const name of schemeNames) {
+    if (seenNames.has(name))
+      throw new Error(`Duplicate scheme name "${name}" derived from file names. Rename files to disambiguate.`)
+    seenNames.add(name)
+  }
   const rawByTraceNum = {}
 
   for (let i = 0; i < files.length; i++) {
@@ -329,7 +335,9 @@ export async function parseClassificationBundle(files) {
     }
 
     for (const row of data) {
-      const traceNum = String(row['TraceNumber'])
+      const rawTrace = row['TraceNumber']
+      if (rawTrace === null || rawTrace === undefined || String(rawTrace).trim() === '') continue
+      const traceNum = String(rawTrace)
       if (!rawByTraceNum[traceNum]) rawByTraceNum[traceNum] = {}
       rawByTraceNum[traceNum][schemeName] = String(row['Class'] ?? '')
     }

@@ -221,7 +221,10 @@ export default function FileDropzone({ onFile, onSidecar, onClassifications, cla
             multiple
             className="hidden"
             onChange={(e) => {
-              if (e.target.files?.length) onClassifications(Array.from(e.target.files))
+              if (e.target.files?.length) {
+                onClassifications(Array.from(e.target.files))
+                e.target.value = ''
+              }
             }}
           />
         </div>

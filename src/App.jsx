@@ -115,6 +115,13 @@ export default function App() {
     }
   }
 
+  function handleStrategyChange(val) {
+    setLabelStrategy(val)
+    if (val === 'classifications' && classificationLabels) {
+      setLabelsByColumn(classificationLabels)
+    }
+  }
+
   function applyNameStrategy() {
     if (!columns.length) return
     setLabelsByColumn(
@@ -135,8 +142,11 @@ export default function App() {
 
   const classificationSchemeCount = useMemo(() => {
     if (!rawClassificationsByTrace) return 0
-    const first = Object.values(rawClassificationsByTrace)[0]
-    return first ? Object.keys(first).length : 0
+    const allKeys = new Set()
+    for (const schemes of Object.values(rawClassificationsByTrace)) {
+      for (const key of Object.keys(schemes)) allKeys.add(key)
+    }
+    return allKeys.size
   }, [rawClassificationsByTrace])
 
   const classificationLabels = useMemo(() => {
@@ -303,7 +313,8 @@ export default function App() {
           {rows.length > 0 && (
             <LabelStrategyPicker
               strategy={labelStrategy}
-              onStrategyChange={setLabelStrategy}
+              onStrategyChange={handleStrategyChange}
+              hasClassifications={rawClassificationsByTrace !== null}
               labelRowCount={labelRowCount}
               onLabelRowCountChange={setLabelRowCount}
               delimiter={delimiter}
