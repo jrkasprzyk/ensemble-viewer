@@ -39,6 +39,8 @@ export default function EnsemblePlot({
     if (!rows || !rows.length) return { traces: [], layout: {} }
 
     const x = rows.map((r) => r[indexColumn])
+    const visibleLineCount = Math.max(1, columns.reduce((n, col) => n + (visibleColumns.has(col) ? 1 : 0), 0))
+    const { lineWidth: individualLineWidth, opacity: individualOpacity } = resolveLineStyling(visibleLineCount, showBands)
 
     // Color map provided by App (single source of truth)
     const resolvedColorMap = colorMap ?? {}
@@ -56,8 +58,8 @@ export default function EnsemblePlot({
         name: col,
         x,
         y: rows.map((r) => r[col]),
-        line: { width: 1, color },
-        opacity: showBands ? 0.25 : 0.55,
+        line: { width: individualLineWidth, color },
+        opacity: individualOpacity,
         hovertemplate: `<b>${col}</b>` +
           Object.entries(labelsByColumn[col] ?? {}).map(([k, v]) => `<br>${k}: ${v}`).join('') +
           `<br>%{x}: %{y:.4g}<extra></extra>`,
@@ -182,4 +184,16 @@ function hexToRgba(hex, alpha) {
   const g = (bigint >> 8) & 255
   const b = bigint & 255
   return `rgba(${r},${g},${b},${alpha})`
+}
+
+export function resolveLineStyling(lineCount, showBands) {
+  const safeCount = Number.isFinite(lineCount) && lineCount > 0 ? lineCount : 1
+  const width = clamp(18 / Math.sqrt(safeCount), 1.2, 2.8)
+  const baseOpacity = clamp(2.2 / Math.sqrt(safeCount), 0.2, 0.72)
+  const opacity = showBands ? Math.max(0.16, baseOpacity * 0.7) : baseOpacity
+  return { lineWidth: width, opacity }
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value))
 }
