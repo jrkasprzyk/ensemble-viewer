@@ -186,6 +186,15 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
+const LINE_WIDTH_SCALE = 18
+const MIN_LINE_WIDTH = 1.2
+const MAX_LINE_WIDTH = 2.8
+const LINE_OPACITY_SCALE = 2.2
+const MIN_LINE_OPACITY = 0.2
+const MAX_LINE_OPACITY = 0.72
+const MIN_BAND_LINE_OPACITY = 0.16
+const BAND_OPACITY_SCALE = 0.7
+
 export function resolveLineStyling(lineCount, showBands) {
   const safeCount = Number.isFinite(lineCount) && lineCount > 0 ? lineCount : 1
   const width = clamp(LINE_WIDTH_SCALE / Math.sqrt(safeCount), MIN_LINE_WIDTH, MAX_LINE_WIDTH)
@@ -197,12 +206,3 @@ export function resolveLineStyling(lineCount, showBands) {
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value))
 }
-
-const LINE_WIDTH_SCALE = 18
-const MIN_LINE_WIDTH = 1.2
-const MAX_LINE_WIDTH = 2.8
-const LINE_OPACITY_SCALE = 2.2
-const MIN_LINE_OPACITY = 0.2
-const MAX_LINE_OPACITY = 0.72
-const MIN_BAND_LINE_OPACITY = 0.16
-const BAND_OPACITY_SCALE = 0.7
