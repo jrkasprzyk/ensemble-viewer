@@ -167,6 +167,31 @@ export function parseFiniteLabelNumber(value) {
 }
 
 /**
+ * Parse numeric values from tied labels (e.g. "A | B") using a target category.
+ *
+ * If `categoryName` is tied ("catA + catB") and `targetCategory` matches one of
+ * its parts, parse that corresponding value from `rawValue`. Otherwise, parse
+ * `rawValue` directly.
+ *
+ * @param {string} rawValue
+ * @param {string} categoryName
+ * @param {string} targetCategory
+ * @returns {number|null}
+ */
+export function parseFiniteLabelNumberForCategoryValue(rawValue, categoryName, targetCategory) {
+  if (!targetCategory || !categoryName || !categoryName.includes(' + ')) {
+    return parseFiniteLabelNumber(rawValue)
+  }
+
+  const parts = categoryName.split(' + ')
+  const idx = parts.indexOf(targetCategory)
+  if (idx < 0) return parseFiniteLabelNumber(rawValue)
+
+  const valueParts = String(rawValue ?? '').split(' | ')
+  return parseFiniteLabelNumber(valueParts[idx] ?? '')
+}
+
+/**
  * Build sort metadata for a given sort category across all columns.
  *
  * Returns:

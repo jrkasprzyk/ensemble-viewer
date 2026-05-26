@@ -34,13 +34,18 @@ export default function EnsemblePlot({
   indexType,        // 'datetime' | 'numeric'
   xAxisLabel,       // optional x-axis label override
   yAxisLabel,       // optional y-axis label
+  lineStyleControls, // { thickness: number, opacity: number }
 }) {
   const { traces, layout } = useMemo(() => {
     if (!rows || !rows.length) return { traces: [], layout: {} }
 
     const x = rows.map((r) => r[indexColumn])
     const visibleLineCount = Math.max(1, columns.filter((col) => visibleColumns.has(col)).length)
-    const { lineWidth: individualLineWidth, opacity: individualOpacity } = resolveLineStyling(visibleLineCount, showBands)
+    const { lineWidth: individualLineWidth, opacity: individualOpacity } = resolveLineStyling(
+      visibleLineCount,
+      showBands,
+      lineStyleControls
+    )
 
     // Color map provided by App (single source of truth)
     const resolvedColorMap = colorMap ?? {}
@@ -159,7 +164,7 @@ export default function EnsemblePlot({
     }
 
     return { traces, layout }
-  }, [rows, indexColumn, columns, labelsByColumn, colorBy, colorMap, visibleColumns, showBands, indexType, xAxisLabel, yAxisLabel])
+  }, [rows, indexColumn, columns, labelsByColumn, colorBy, colorMap, visibleColumns, showBands, indexType, xAxisLabel, yAxisLabel, lineStyleControls])
 
   return (
     <Plot
@@ -198,11 +203,15 @@ const MIN_LINE_OPACITY = 0.2
 const MAX_LINE_OPACITY = 0.72
 export const MIN_BAND_LINE_OPACITY = 0.16
 const BAND_OPACITY_SCALE = 0.7
+const MIN_STYLE_MULTIPLIER = 0.6
+const MAX_STYLE_MULTIPLIER = 1.8
 
-export function resolveLineStyling(lineCount, showBands) {
+export function resolveLineStyling(lineCount, showBands, lineStyleControls = {}) {
   const safeCount = Number.isFinite(lineCount) && lineCount > 0 ? lineCount : 1
-  const width = clamp(LINE_WIDTH_SCALE / Math.sqrt(safeCount), MIN_LINE_WIDTH, MAX_LINE_WIDTH)
-  const baseOpacity = clamp(LINE_OPACITY_SCALE / Math.sqrt(safeCount), MIN_LINE_OPACITY, MAX_LINE_OPACITY)
+  const thicknessMultiplier = clamp(lineStyleControls?.thickness ?? 1, MIN_STYLE_MULTIPLIER, MAX_STYLE_MULTIPLIER)
+  const opacityMultiplier = clamp(lineStyleControls?.opacity ?? 1, MIN_STYLE_MULTIPLIER, MAX_STYLE_MULTIPLIER)
+  const width = clamp((LINE_WIDTH_SCALE / Math.sqrt(safeCount)) * thicknessMultiplier, MIN_LINE_WIDTH, MAX_LINE_WIDTH)
+  const baseOpacity = clamp((LINE_OPACITY_SCALE / Math.sqrt(safeCount)) * opacityMultiplier, MIN_LINE_OPACITY, MAX_LINE_OPACITY)
   const opacity = showBands ? Math.max(MIN_BAND_LINE_OPACITY, baseOpacity * BAND_OPACITY_SCALE) : baseOpacity
   return { lineWidth: width, opacity }
 }

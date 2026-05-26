@@ -17,4 +17,12 @@ describe('resolveLineStyling', () => {
     expect(withBands.opacity).toBeLessThan(withoutBands.opacity)
     expect(withBands.opacity).toBeGreaterThanOrEqual(MIN_BAND_LINE_OPACITY)
   })
+
+  it('applies line style multipliers from controls', () => {
+    const base = resolveLineStyling(40, false, { thickness: 1, opacity: 1 })
+    const boosted = resolveLineStyling(40, false, { thickness: 1.5, opacity: 1.5 })
+
+    expect(boosted.lineWidth).toBeGreaterThan(base.lineWidth)
+    expect(boosted.opacity).toBeGreaterThan(base.opacity)
+  })
 })

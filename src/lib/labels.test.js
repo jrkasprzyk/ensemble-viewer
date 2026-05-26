@@ -6,6 +6,7 @@ import {
   detectIndexType,
   parseSidecarLabels,
   parseFiniteLabelNumber,
+  parseFiniteLabelNumberForCategoryValue,
   buildSortMetadata,
   buildVisibleColumnSet,
   deriveSchemeNames,
@@ -154,6 +155,22 @@ describe('parseFiniteLabelNumber', () => {
     expect(parseFiniteLabelNumber('80')).toBe(80)
     expect(parseFiniteLabelNumber('95.5')).toBe(95.5)
     expect(parseFiniteLabelNumber('-10')).toBe(-10)
+  })
+
+  describe('parseFiniteLabelNumberForCategoryValue', () => {
+    it('parses direct numeric values for non-tied categories', () => {
+      expect(parseFiniteLabelNumberForCategoryValue('95', 'Percent', 'Percent')).toBe(95)
+    })
+
+    it('parses the targeted numeric segment from tied values', () => {
+      const category = 'A + B'
+      expect(parseFiniteLabelNumberForCategoryValue('10 | 80', category, 'B')).toBe(80)
+      expect(parseFiniteLabelNumberForCategoryValue('10 | 80', category, 'A')).toBe(10)
+    })
+
+    it('returns null when targeted tied segment is non-numeric', () => {
+      expect(parseFiniteLabelNumberForCategoryValue('10 | high', 'A + B', 'B')).toBeNull()
+    })
   })
 
   it('parses actual numbers', () => {

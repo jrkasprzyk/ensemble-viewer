@@ -25,6 +25,8 @@ export default function LabelControls({
   yAxisLabel,
   onXAxisLabelChange,
   onYAxisLabelChange,
+  lineStyleControls,
+  onLineStyleControlsChange,
   splitBy,
   onSplitByChange,
   tieCategoryA,
@@ -87,6 +89,48 @@ export default function LabelControls({
             className="px-2 py-1 border border-rule bg-paper font-mono"
           />
         </div>
+        <details className="flex flex-col gap-2">
+          <summary className="cursor-pointer font-mono uppercase tracking-wider text-[10px] text-muted">
+            Line styling
+          </summary>
+          <div className="mt-2 grid grid-cols-[1fr_auto] gap-2 items-center">
+            <label className="font-mono text-[10px] text-muted">Thickness</label>
+            <span className="font-mono text-[10px]">{lineStyleControls.thickness.toFixed(2)}×</span>
+            <input
+              type="range"
+              min="0.6"
+              max="1.8"
+              step="0.05"
+              value={lineStyleControls.thickness}
+              onChange={(e) => onLineStyleControlsChange({
+                ...lineStyleControls,
+                thickness: Number(e.target.value),
+              })}
+              className="col-span-2 accent-accent"
+            />
+            <label className="font-mono text-[10px] text-muted">Opacity</label>
+            <span className="font-mono text-[10px]">{lineStyleControls.opacity.toFixed(2)}×</span>
+            <input
+              type="range"
+              min="0.6"
+              max="1.8"
+              step="0.05"
+              value={lineStyleControls.opacity}
+              onChange={(e) => onLineStyleControlsChange({
+                ...lineStyleControls,
+                opacity: Number(e.target.value),
+              })}
+              className="col-span-2 accent-accent"
+            />
+            <button
+              type="button"
+              onClick={() => onLineStyleControlsChange({ thickness: 1, opacity: 1 })}
+              className="justify-self-start text-[10px] font-mono uppercase tracking-wider text-muted hover:text-ink"
+            >
+              Reset line styling
+            </button>
+          </div>
+        </details>
         <div className="flex flex-col gap-1">
           <label className="font-mono uppercase tracking-wider text-[10px] text-muted">
             Multiple plots by
