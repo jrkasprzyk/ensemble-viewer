@@ -179,6 +179,8 @@ export function parseFiniteLabelNumber(value) {
  * @returns {number|null}
  */
 export function parseFiniteLabelNumberForCategoryValue(rawValue, categoryName, targetCategory) {
+  if (rawValue === null || rawValue === undefined || rawValue === '') return null
+
   if (!targetCategory || !categoryName || !categoryName.includes(' + ')) {
     return parseFiniteLabelNumber(rawValue)
   }

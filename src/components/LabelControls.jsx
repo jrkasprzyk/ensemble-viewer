@@ -89,8 +89,8 @@ export default function LabelControls({
             className="px-2 py-1 border border-rule bg-paper font-mono"
           />
         </div>
-        <details className="flex flex-col gap-2" aria-label="Line styling controls">
-          <summary className="cursor-pointer font-mono uppercase tracking-wider text-[10px] text-muted">
+        <details className="flex flex-col gap-2">
+          <summary className="cursor-pointer font-mono uppercase tracking-wider text-[10px] text-muted" aria-label="Line styling controls">
             Line styling
           </summary>
           <div className="mt-2 grid grid-cols-[1fr_auto] gap-2 items-center">
