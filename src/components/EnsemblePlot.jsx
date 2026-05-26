@@ -39,7 +39,7 @@ export default function EnsemblePlot({
     if (!rows || !rows.length) return { traces: [], layout: {} }
 
     const x = rows.map((r) => r[indexColumn])
-    const visibleLineCount = Math.max(1, columns.reduce((n, col) => n + (visibleColumns.has(col) ? 1 : 0), 0))
+    const visibleLineCount = Math.max(1, columns.filter((col) => visibleColumns.has(col)).length)
     const { lineWidth: individualLineWidth, opacity: individualOpacity } = resolveLineStyling(visibleLineCount, showBands)
 
     // Color map provided by App (single source of truth)
@@ -186,6 +186,10 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`
 }
 
+// Tuned for legibility across sparse vs dense ensembles:
+// - line width decreases with sqrt(N) but remains within [1.2, 2.8]
+// - line opacity also decreases with sqrt(N) and is reduced further when
+//   summary bands are shown, with a floor to keep traces visible.
 const LINE_WIDTH_SCALE = 18
 const MIN_LINE_WIDTH = 1.2
 const MAX_LINE_WIDTH = 2.8
