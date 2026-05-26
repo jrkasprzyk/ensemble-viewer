@@ -6,6 +6,7 @@ import {
   detectIndexType,
   parseSidecarLabels,
   parseFiniteLabelNumber,
+  parseFiniteLabelNumberForCategoryValue,
   buildSortMetadata,
   buildVisibleColumnSet,
   deriveSchemeNames,
@@ -176,6 +177,39 @@ describe('parseFiniteLabelNumber', () => {
   it('returns null for null and undefined', () => {
     expect(parseFiniteLabelNumber(null)).toBeNull()
     expect(parseFiniteLabelNumber(undefined)).toBeNull()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// parseFiniteLabelNumberForCategoryValue
+// ---------------------------------------------------------------------------
+describe('parseFiniteLabelNumberForCategoryValue', () => {
+  it('parses direct numeric values for non-tied categories', () => {
+    expect(parseFiniteLabelNumberForCategoryValue('95', 'Percent', 'Percent')).toBe(95)
+  })
+
+  it('parses the targeted numeric segment from tied values', () => {
+    const category = 'A + B'
+    expect(parseFiniteLabelNumberForCategoryValue('10 | 80', category, 'B')).toBe(80)
+    expect(parseFiniteLabelNumberForCategoryValue('10 | 80', category, 'A')).toBe(10)
+  })
+
+  it('returns null when targeted tied segment is non-numeric', () => {
+    expect(parseFiniteLabelNumberForCategoryValue('10 | high', 'A + B', 'B')).toBeNull()
+  })
+
+  it('returns null when tied value has fewer segments than the target category index', () => {
+    expect(parseFiniteLabelNumberForCategoryValue('10', 'A + B', 'B')).toBeNull()
+  })
+
+  it('handles null and undefined raw values', () => {
+    expect(parseFiniteLabelNumberForCategoryValue(null, 'A + B', 'A')).toBeNull()
+    expect(parseFiniteLabelNumberForCategoryValue(undefined, 'A + B', 'A')).toBeNull()
+  })
+
+  it('falls back to direct parsing when target category is not part of the tied category', () => {
+    expect(parseFiniteLabelNumberForCategoryValue('10 | 80', 'A + B', 'C')).toBeNull()
+    expect(parseFiniteLabelNumberForCategoryValue('42', 'A + B', 'C')).toBe(42)
   })
 })
 

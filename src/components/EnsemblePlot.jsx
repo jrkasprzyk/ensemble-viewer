@@ -7,6 +7,7 @@ const PlotlyLib = Plotly?.default ?? Plotly
 const Plot = createPlotlyComponent(PlotlyLib)
 import { NEUTRAL_GRAY } from '../lib/palette.js'
 import { computeGroupStats } from '../lib/stats.js'
+import { resolveLineStyling } from '../lib/plotStyle.js'
 
 /**
  * EnsemblePlot
@@ -34,11 +35,18 @@ export default function EnsemblePlot({
   indexType,        // 'datetime' | 'numeric'
   xAxisLabel,       // optional x-axis label override
   yAxisLabel,       // optional y-axis label
+  lineStyleControls, // { thickness: number, opacity: number }
 }) {
   const { traces, layout } = useMemo(() => {
     if (!rows || !rows.length) return { traces: [], layout: {} }
 
     const x = rows.map((r) => r[indexColumn])
+    const visibleLineCount = Math.max(1, columns.filter((col) => visibleColumns.has(col)).length)
+    const { lineWidth: individualLineWidth, opacity: individualOpacity } = resolveLineStyling(
+      visibleLineCount,
+      showBands,
+      lineStyleControls
+    )
 
     // Color map provided by App (single source of truth)
     const resolvedColorMap = colorMap ?? {}
@@ -56,8 +64,8 @@ export default function EnsemblePlot({
         name: col,
         x,
         y: rows.map((r) => r[col]),
-        line: { width: 1, color },
-        opacity: showBands ? 0.25 : 0.55,
+        line: { width: individualLineWidth, color },
+        opacity: individualOpacity,
         hovertemplate: `<b>${col}</b>` +
           Object.entries(labelsByColumn[col] ?? {}).map(([k, v]) => `<br>${k}: ${v}`).join('') +
           `<br>%{x}: %{y:.4g}<extra></extra>`,
@@ -157,7 +165,7 @@ export default function EnsemblePlot({
     }
 
     return { traces, layout }
-  }, [rows, indexColumn, columns, labelsByColumn, colorBy, colorMap, visibleColumns, showBands, indexType, xAxisLabel, yAxisLabel])
+  }, [rows, indexColumn, columns, labelsByColumn, colorBy, colorMap, visibleColumns, showBands, indexType, xAxisLabel, yAxisLabel, lineStyleControls])
 
   return (
     <Plot
@@ -183,3 +191,4 @@ function hexToRgba(hex, alpha) {
   const b = bigint & 255
   return `rgba(${r},${g},${b},${alpha})`
 }
+

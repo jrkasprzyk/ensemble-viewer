@@ -16,6 +16,9 @@
  * The three strategies below all produce that same shape from different inputs.
  */
 
+const TIED_CATEGORY_DELIMITER = ' + '
+const TIED_VALUE_DELIMITER = ' | '
+
 /**
  * Parse labels from column names using a delimiter character.
  *
@@ -134,7 +137,7 @@ export function tieLabelCategories(labelsByColumn, categories = []) {
   const cats = [...new Set(categories.filter(Boolean))]
   if (cats.length < 2) return labelsByColumn
 
-  const tiedName = cats.join(' + ')
+  const tiedName = cats.join(TIED_CATEGORY_DELIMITER)
   const out = {}
 
   for (const [col, labels] of Object.entries(labelsByColumn)) {
@@ -143,7 +146,7 @@ export function tieLabelCategories(labelsByColumn, categories = []) {
       out[col] = labels
       continue
     }
-    const tiedValue = cats.map((cat) => nextLabels[cat]).join(' | ')
+    const tiedValue = cats.map((cat) => nextLabels[cat]).join(TIED_VALUE_DELIMITER)
 
     for (const cat of cats) delete nextLabels[cat]
     nextLabels[tiedName] = tiedValue
@@ -164,6 +167,33 @@ export function parseFiniteLabelNumber(value) {
   if (value === null || value === undefined || value === '') return null
   const n = Number(value)
   return Number.isFinite(n) ? n : null
+}
+
+/**
+ * Parse numeric values from tied labels (e.g. "A | B") using a target category.
+ *
+ * If `categoryName` is tied ("catA + catB") and `targetCategory` matches one of
+ * its parts, parse that corresponding value from `rawValue`. Otherwise, parse
+ * `rawValue` directly.
+ *
+ * @param {string|null|undefined} rawValue
+ * @param {string} categoryName
+ * @param {string} targetCategory
+ * @returns {number|null}
+ */
+export function parseFiniteLabelNumberForCategoryValue(rawValue, categoryName, targetCategory) {
+  if (rawValue === null || rawValue === undefined || rawValue === '') return null
+
+  if (!targetCategory || !categoryName || !categoryName.includes(TIED_CATEGORY_DELIMITER)) {
+    return parseFiniteLabelNumber(rawValue)
+  }
+
+  const parts = categoryName.split(TIED_CATEGORY_DELIMITER)
+  const idx = parts.indexOf(targetCategory)
+  if (idx < 0) return parseFiniteLabelNumber(rawValue)
+
+  const valueParts = String(rawValue).split(TIED_VALUE_DELIMITER)
+  return parseFiniteLabelNumber(valueParts[idx] ?? '')
 }
 
 /**

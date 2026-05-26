@@ -15,9 +15,11 @@ import {
   detectIndexType,
   buildSortMetadata,
   parseFiniteLabelNumber,
+  parseFiniteLabelNumberForCategoryValue,
   buildVisibleColumnSet,
 } from './lib/labels.js'
 import { buildColorMap, buildSequentialColorMap } from './lib/palette.js'
+import { DEFAULT_STYLE_MULTIPLIER } from './lib/plotStyle.js'
 
 const EMPTY_LABEL = '⟨empty⟩'
 
@@ -43,6 +45,10 @@ export default function App() {
   const [showBands, setShowBands] = useState(false)
   const [xAxisLabel, setXAxisLabel] = useState('')
   const [yAxisLabel, setYAxisLabel] = useState('')
+  const [lineStyleControls, setLineStyleControls] = useState({
+    thickness: DEFAULT_STYLE_MULTIPLIER,
+    opacity: DEFAULT_STYLE_MULTIPLIER,
+  })
   const [splitBy, setSplitBy] = useState('')
   const [tieCategoryA, setTieCategoryA] = useState('')
   const [tieCategoryB, setTieCategoryB] = useState('')
@@ -182,13 +188,14 @@ export default function App() {
   const colorMap = useMemo(() => {
     if (!colorBy || !categoryValues[colorBy]) return {}
     const vals = categoryValues[colorBy]
-    const allNumeric = vals.every((v) => parseFiniteLabelNumber(v) !== null)
+    const toColorNumber = (v) => parseFiniteLabelNumberForCategoryValue(v, colorBy, sortCategory)
+    const allNumeric = vals.every((v) => toColorNumber(v) !== null)
     if (allNumeric) {
-      const sorted = [...vals].sort((a, b) => parseFiniteLabelNumber(a) - parseFiniteLabelNumber(b))
+      const sorted = [...vals].sort((a, b) => toColorNumber(a) - toColorNumber(b))
       return buildSequentialColorMap(sorted)
     }
     return buildColorMap([...vals].sort())
-  }, [colorBy, categoryValues])
+  }, [colorBy, categoryValues, sortCategory])
 
   const orderedColumns = useMemo(() => {
     if (!sortCategory || !numericDomain) return columns
@@ -340,6 +347,8 @@ export default function App() {
               yAxisLabel={yAxisLabel}
               onXAxisLabelChange={setXAxisLabel}
               onYAxisLabelChange={setYAxisLabel}
+              lineStyleControls={lineStyleControls}
+              onLineStyleControlsChange={setLineStyleControls}
               splitBy={splitBy}
               onSplitByChange={setSplitBy}
               tieCategoryA={tieCategoryA}
@@ -389,6 +398,7 @@ export default function App() {
                         indexType={indexType}
                         xAxisLabel={xAxisLabel}
                         yAxisLabel={yAxisLabel}
+                        lineStyleControls={lineStyleControls}
                       />
                     </div>
                   </div>
