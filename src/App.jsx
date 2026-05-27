@@ -21,7 +21,7 @@ import {
   BUNDLED_CATEGORY,
 } from './lib/labels.js'
 import { buildColorMap, buildSequentialColorMap, BUNDLED_COLOR_MAP } from './lib/palette.js'
-import { DEFAULT_STYLE_MULTIPLIER } from './lib/plotStyle.js'
+import { DEFAULT_STYLE_MULTIPLIER, resolveLineStyling } from './lib/plotStyle.js'
 
 const EMPTY_LABEL = '⟨empty⟩'
 
@@ -301,6 +301,11 @@ export default function App() {
     })
   }, [columns, effectiveLabelsByColumn, effectiveActiveByCategory, categoryValues, sortRange, numericDomain, sortableNumberByColumn])
 
+  const resolvedLineStyle = useMemo(() => {
+    if (!rows.length) return null
+    return resolveLineStyling(visibleColumns.size, showBands, lineStyleControls)
+  }, [rows.length, visibleColumns.size, showBands, lineStyleControls])
+
   const plotGroups = useMemo(() => {
     if (!splitBy || !categoryValues[splitBy]) {
       return [{ key: 'all', title: null, columns: orderedColumns }]
@@ -378,7 +383,14 @@ export default function App() {
             wide CSV / XLSX → interactive timeseries
           </span>
         </div>
-        <div className="font-mono text-[10px] text-muted">{status}</div>
+        <div className="font-mono text-[10px] text-muted text-right">
+          <div>{status}</div>
+          {resolvedLineStyle && (
+            <div>
+              line style: width {resolvedLineStyle.lineWidth.toFixed(2)}, opacity {resolvedLineStyle.opacity.toFixed(2)}
+            </div>
+          )}
+        </div>
       </header>
 
       {error && (
