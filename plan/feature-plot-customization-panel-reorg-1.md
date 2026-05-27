@@ -3,14 +3,15 @@ goal: Expose plot axis bounds customization and reorganize left-hand control pan
 version: 1.1
 date_created: 2026-05-26
 last_updated: 2026-05-27
+date_completed: 2026-05-27
 owner: Joseph Kasprzyk
-status: 'Planned'
+status: 'Completed'
 tags: [feature, architecture, design]
 ---
 
 # Introduction
 
-![Status: Planned](https://img.shields.io/badge/status-Planned-blue)
+![Status: Completed](https://img.shields.io/badge/status-Completed-green)
 
 Two related improvements: (1) let users pin Y-axis (and optionally X-axis) bounds that persist regardless of data filtering, and (2) reorganize the sidebar so controls are grouped by function rather than crammed into a single "Display" block. Colored section boxes will provide visual separation.
 
@@ -37,10 +38,10 @@ Two related improvements: (1) let users pin Y-axis (and optionally X-axis) bound
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-001 | Add state `axisRanges = { xMin: '', xMax: '', yMin: '', yMax: '' }` (all strings; empty = auto-range) to `App.jsx` near the `xAxisLabel`/`yAxisLabel` state declarations. | | |
-| TASK-002 | Pass `axisRanges` as a prop to every `<EnsemblePlot>` instance rendered in `App.jsx`. | | |
-| TASK-003 | In `EnsemblePlot.jsx` Plotly layout (currently ~lines 135-165), map `axisRanges.yMin`/`yMax` to `yaxis.range` and set `yaxis.autorange` to `false` only when at least one y bound is non-empty. Same for `xaxis`. Parse inline: `parseFloat(v) || null`; use `null` entry in `range` array when only one bound is set (Plotly 2.35.2 confirmed to accept `[null, 5]` to fix only the upper bound — RISK-001 is low). | | |
-| TASK-004 | Verify that changing `activeByCategory` (column filtering) does NOT reset the user-defined bounds — confirm via manual test. | | |
+| TASK-001 | Add state `axisRanges = { xMin: '', xMax: '', yMin: '', yMax: '' }` (all strings; empty = auto-range) to `App.jsx` near the `xAxisLabel`/`yAxisLabel` state declarations. | ✅ | 2026-05-27 |
+| TASK-002 | Pass `axisRanges` as a prop to every `<EnsemblePlot>` instance rendered in `App.jsx`. | ✅ | 2026-05-27 |
+| TASK-003 | In `EnsemblePlot.jsx` Plotly layout (currently ~lines 135-165), map `axisRanges.yMin`/`yMax` to `yaxis.range` and set `yaxis.autorange` to `false` only when at least one y bound is non-empty. Same for `xaxis`. Parse inline: `parseFloat(v) || null`; use `null` entry in `range` array when only one bound is set (Plotly 2.35.2 confirmed to accept `[null, 5]` to fix only the upper bound — RISK-001 is low). | ✅ | 2026-05-27 |
+| TASK-004 | Verify that changing `activeByCategory` (column filtering) does NOT reset the user-defined bounds — confirm via manual test. | ✅ | 2026-05-27 |
 
 ### Implementation Phase 2 — Axis bounds UI in sidebar
 
@@ -48,9 +49,9 @@ Two related improvements: (1) let users pin Y-axis (and optionally X-axis) bound
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-005 | Add `axisRanges` prop and `onAxisRangesChange` callback to `LabelControls.jsx`. | | |
-| TASK-006 | Add a "Plot bounds" `<details>` collapsible inside the Display section (matching the Line styling `<details>` pattern). Two rows inside: "Y-axis" with Min/Max number inputs; "X-axis" with Min/Max number inputs. Inputs are fully controlled from `axisRanges` strings — no local draft state. On change: if value is empty or parseable, call `onAxisRangesChange({ ...axisRanges, key: e.target.value })`. On blur: do nothing (empty is valid = auto-range). | | |
-| TASK-007 | Wire `onAxisRangesChange` in `App.jsx` to update `axisRanges` state directly (strings pass through as-is; EnsemblePlot parses inline). | | |
+| TASK-005 | Add `axisRanges` prop and `onAxisRangesChange` callback to `LabelControls.jsx`. | ✅ | 2026-05-27 |
+| TASK-006 | Add a "Plot bounds" `<details>` collapsible inside the Display section (matching the Line styling `<details>` pattern). Two rows inside: "Y-axis" with Min/Max number inputs; "X-axis" with Min/Max number inputs. Inputs are fully controlled from `axisRanges` strings — no local draft state. On change: if value is empty or parseable, call `onAxisRangesChange({ ...axisRanges, key: e.target.value })`. On blur: do nothing (empty is valid = auto-range). | ✅ | 2026-05-27 |
+| TASK-007 | Wire `onAxisRangesChange` in `App.jsx` to update `axisRanges` state directly (strings pass through as-is; EnsemblePlot parses inline). | ✅ | 2026-05-27 |
 
 ### Implementation Phase 3 — Sidebar reorganization
 
@@ -60,13 +61,13 @@ Section order (top to bottom): **Display → Faceting → Filter → Classificat
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-008 | Define five sidebar section wrappers using Tailwind (colored left-border or light background box + bold label). Palette — Display: `bg-blue-50 border-blue-200`; Faceting: `bg-violet-50 border-violet-200`; Filter: `bg-amber-50 border-amber-200`; Classification: `bg-rose-50 border-rose-200`; Categories: `bg-gray-50 border-gray-200`. Use full static class name strings only (no template construction) so Tailwind JIT picks them up via content scanning — no safelist change needed. | | |
-| TASK-009 | Move "Multiple plots by" and "Tie labels together" into a new **Faceting** section, separate from Display. | | |
-| TASK-010 | Keep Show bands, X/Y axis labels, line thickness/opacity, and the new Plot bounds collapsible in the **Display** section. | | |
-| TASK-011 | Move "Sort/filter by" category selector and its min/max range inputs into a **Filter** section. | | |
-| TASK-012 | Wrap the existing Bundled Classification and Individual Classifications blocks in a **Classification** section (`bg-rose-50 border-rose-200`). These blocks were added in PR #15 and are not part of the original four-section plan. | | |
-| TASK-013 | Keep per-category color/visibility checkboxes in a **Categories** section. | | |
-| TASK-014 | Update section header styling to use small caps or bold text with the section color so each group is immediately recognizable. | | |
+| TASK-008 | Define five sidebar section wrappers using Tailwind (colored left-border or light background box + bold label). Palette — Display: `bg-blue-50 border-blue-200`; Faceting: `bg-violet-50 border-violet-200`; Filter: `bg-amber-50 border-amber-200`; Classification: `bg-rose-50 border-rose-200`; Categories: `bg-gray-50 border-gray-200`. Use full static class name strings only (no template construction) so Tailwind JIT picks them up via content scanning — no safelist change needed. | ✅ (palette revised) | 2026-05-27 |
+| TASK-009 | Move "Multiple plots by" and "Tie labels together" into a new **Faceting** section, separate from Display. | ✅ | 2026-05-27 |
+| TASK-010 | Keep Show bands, X/Y axis labels, line thickness/opacity, and the new Plot bounds collapsible in the **Display** section. | ✅ | 2026-05-27 |
+| TASK-011 | Move "Sort/filter by" category selector and its min/max range inputs into a **Filter** section. | ✅ | 2026-05-27 |
+| TASK-012 | Wrap the existing Bundled Classification and Individual Classifications blocks in a **Classification** section (`bg-rose-50 border-rose-200`). These blocks were added in PR #15 and are not part of the original four-section plan. | ✅ | 2026-05-27 |
+| TASK-013 | Keep per-category color/visibility checkboxes in a **Categories** section. | ✅ | 2026-05-27 |
+| TASK-014 | Update section header styling to use small caps or bold text with the section color so each group is immediately recognizable. | ✅ | 2026-05-27 |
 
 ### Implementation Phase 4 — Polish & QA
 
@@ -74,11 +75,11 @@ Section order (top to bottom): **Display → Faceting → Filter → Classificat
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-015 | Run app with example dataset; exercise all five sidebar sections and confirm all controls still function correctly. | | |
-| TASK-016 | Test axis bounds: set Y min=0, Y max=100; filter columns in/out; confirm bounds hold. Clear bounds; confirm auto-range resumes. | | |
-| TASK-017 | Test partial bounds: set only Y max; confirm lower auto-range still works. | | |
-| TASK-018 | Test with multiple plots (splitBy set): confirm each subplot respects same global axis bounds. | | |
-| TASK-019 | Check 320 px sidebar at various zoom levels; confirm no horizontal overflow. | | |
+| TASK-015 | Run app with example dataset; exercise all five sidebar sections and confirm all controls still function correctly. | ✅ | 2026-05-27 |
+| TASK-016 | Test axis bounds: set Y min=0, Y max=100; filter columns in/out; confirm bounds hold. Clear bounds; confirm auto-range resumes. | ✅ | 2026-05-27 |
+| TASK-017 | Test partial bounds: set only Y max; confirm lower auto-range still works. | ✅ (bug found + fixed: switched to Plotly `autorange: 'min'`/`'max'` for one-sided bounds) | 2026-05-27 |
+| TASK-018 | Test with multiple plots (splitBy set): confirm each subplot respects same global axis bounds. | ⏭ not verified | |
+| TASK-019 | Check 320 px sidebar at various zoom levels; confirm no horizontal overflow. | ⏭ not verified | |
 
 ## 3. Alternatives
 

@@ -36,6 +36,7 @@ export default function EnsemblePlot({
   xAxisLabel,       // optional x-axis label override
   yAxisLabel,       // optional y-axis label
   lineStyleControls, // { thickness: number, opacity: number }
+  axisRanges,        // { xMin, xMax, yMin, yMax } strings; empty = auto
 }) {
   const { traces, layout } = useMemo(() => {
     if (!rows || !rows.length) return { traces: [], layout: {} }
@@ -145,6 +146,7 @@ export default function EnsemblePlot({
         ticks: 'outside',
         tickcolor: '#1a1a1a',
         title: { text: xAxisLabel || indexColumn, standoff: 8 },
+        ...rangeForAxis(axisRanges?.xMin, axisRanges?.xMax),
       },
       yaxis: {
         gridcolor: '#e6e3db',
@@ -153,6 +155,7 @@ export default function EnsemblePlot({
         tickcolor: '#1a1a1a',
         title: yAxisLabel ? { text: yAxisLabel, standoff: 8 } : undefined,
         zeroline: false,
+        ...rangeForAxis(axisRanges?.yMin, axisRanges?.yMax),
       },
       showlegend: showBands && !!colorBy,
       legend: {
@@ -165,7 +168,7 @@ export default function EnsemblePlot({
     }
 
     return { traces, layout }
-  }, [rows, indexColumn, columns, labelsByColumn, colorBy, colorMap, visibleColumns, showBands, indexType, xAxisLabel, yAxisLabel, lineStyleControls])
+  }, [rows, indexColumn, columns, labelsByColumn, colorBy, colorMap, visibleColumns, showBands, indexType, xAxisLabel, yAxisLabel, lineStyleControls, axisRanges])
 
   return (
     <Plot
@@ -181,6 +184,23 @@ export default function EnsemblePlot({
       }}
     />
   )
+}
+
+function rangeForAxis(minRaw, maxRaw) {
+  const parse = (v) => {
+    if (v === undefined || v === null || v === '') return null
+    const n = Number(v)
+    return Number.isFinite(n) ? n : null
+  }
+  const lo = parse(minRaw)
+  const hi = parse(maxRaw)
+  if (lo === null && hi === null) return {}
+  if (lo !== null && hi !== null) return { autorange: false, range: [lo, hi] }
+  // Partial bounds: fix one side, let Plotly auto-fit the other side to the data.
+  // `autorange: 'min'` means "extend the min automatically" (so we're fixing max);
+  // `autorange: 'max'` means "extend the max automatically" (so we're fixing min).
+  if (lo === null) return { autorange: 'min', range: [null, hi] }
+  return { autorange: 'max', range: [lo, null] }
 }
 
 function hexToRgba(hex, alpha) {

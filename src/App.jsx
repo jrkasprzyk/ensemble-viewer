@@ -51,6 +51,7 @@ export default function App() {
     thickness: DEFAULT_STYLE_MULTIPLIER,
     opacity: DEFAULT_STYLE_MULTIPLIER,
   })
+  const [axisRanges, setAxisRanges] = useState({ xMin: '', xMax: '', yMin: '', yMax: '' })
   const [splitBy, setSplitBy] = useState('')
   const [tieCategoryA, setTieCategoryA] = useState('')
   const [tieCategoryB, setTieCategoryB] = useState('')
@@ -428,6 +429,8 @@ export default function App() {
               onYAxisLabelChange={setYAxisLabel}
               lineStyleControls={lineStyleControls}
               onLineStyleControlsChange={setLineStyleControls}
+              axisRanges={axisRanges}
+              onAxisRangesChange={setAxisRanges}
               splitBy={splitBy}
               onSplitByChange={setSplitBy}
               tieCategoryA={tieCategoryA}
@@ -488,6 +491,7 @@ export default function App() {
                         xAxisLabel={xAxisLabel}
                         yAxisLabel={yAxisLabel}
                         lineStyleControls={lineStyleControls}
+                        axisRanges={axisRanges}
                       />
                     </div>
                   </div>
