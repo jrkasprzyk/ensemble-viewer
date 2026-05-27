@@ -178,6 +178,10 @@ export default function App() {
     setLabelStrategy('classifications')
   }, [classificationLabels])
 
+  useEffect(() => {
+    if (!selectedHorizons.size && colorBy === BUNDLED_CATEGORY) setColorBy(null)
+  }, [selectedHorizons, colorBy])
+
   const classificationSchemeNames = useMemo(() => {
     if (!rawClassificationsByTrace) return []
     const first = Object.values(rawClassificationsByTrace)[0] || {}
@@ -220,7 +224,7 @@ export default function App() {
 
   const colorMap = useMemo(() => {
     if (!colorBy || !categoryValues[colorBy]) return {}
-    if (colorBy === BUNDLED_CATEGORY) return BUNDLED_COLOR_MAP
+    if (colorBy === BUNDLED_CATEGORY || classificationSchemeNames.includes(colorBy)) return BUNDLED_COLOR_MAP
     const vals = categoryValues[colorBy]
     const toColorNumber = (v) => parseFiniteLabelNumberForCategoryValue(v, colorBy, sortCategory)
     const allNumeric = vals.every((v) => toColorNumber(v) !== null)
@@ -229,7 +233,7 @@ export default function App() {
       return buildSequentialColorMap(sorted)
     }
     return buildColorMap([...vals].sort())
-  }, [colorBy, categoryValues, sortCategory])
+  }, [colorBy, categoryValues, sortCategory, classificationSchemeNames])
 
   const effectiveActiveByCategory = useMemo(() => {
     if (!classificationSchemeNames.length) return activeByCategory

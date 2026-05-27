@@ -297,10 +297,10 @@ export default function LabelControls({
                 name="color-by"
                 checked={colorBy === BUNDLED_CATEGORY}
                 onChange={() => onColorByChange(BUNDLED_CATEGORY)}
-                disabled={!selectedHorizons?.size}
+                disabled={!selectedHorizons.size}
                 className="accent-accent"
               />
-              <span className={`text-[10px] font-mono uppercase tracking-wider ${!selectedHorizons?.size ? 'text-muted' : ''}`}>
+              <span className={`text-[10px] font-mono uppercase tracking-wider ${!selectedHorizons.size ? 'text-muted' : ''}`}>
                 Color
               </span>
             </label>
@@ -317,7 +317,7 @@ export default function LabelControls({
                 <label key={scheme} className="flex items-center gap-1 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={selectedHorizons?.has(scheme) ?? false}
+                    checked={selectedHorizons.has(scheme)}
                     onChange={() => onHorizonToggle(scheme)}
                     className="accent-accent"
                   />
@@ -343,19 +343,19 @@ export default function LabelControls({
             <div className="flex items-center gap-3">
               <span className="text-[10px] text-muted font-mono">Filter:</span>
               {['Failure', 'Success'].map((v) => (
-                <label key={v} className={`flex items-center gap-1 ${selectedHorizons?.size ? 'cursor-pointer' : 'cursor-default'}`}>
+                <label key={v} className={`flex items-center gap-1 ${selectedHorizons.size ? 'cursor-pointer' : 'cursor-default'}`}>
                   <input
                     type="checkbox"
-                    checked={bundledFilter?.has(v) ?? true}
+                    checked={bundledFilter.has(v)}
                     onChange={() => onBundledFilterChange(v)}
-                    disabled={!selectedHorizons?.size}
+                    disabled={!selectedHorizons.size}
                     className="accent-accent"
                   />
-                  <span className={`font-mono text-[10px] ${!selectedHorizons?.size ? 'text-muted' : ''}`}>{v}</span>
+                  <span className={`font-mono text-[10px] ${!selectedHorizons.size ? 'text-muted' : ''}`}>{v}</span>
                 </label>
               ))}
             </div>
-            {!selectedHorizons?.size && (
+            {!selectedHorizons.size && (
               <p className="text-[11px] text-muted">Select time horizons to enable bundled classification.</p>
             )}
           </div>
@@ -370,12 +370,12 @@ export default function LabelControls({
             </span>
             <div className="flex items-center gap-3 ml-auto">
               {['Failure', 'Success'].map((v) => {
-                const active = classificationSchemeNames.includes(colorBy)
+                const active = classificationSchemeSet.has(colorBy)
                 return (
                   <label key={v} className={`flex items-center gap-1 ${active ? 'cursor-pointer' : 'cursor-default'}`}>
                     <input
                       type="checkbox"
-                      checked={classificationFilter?.has(v) ?? true}
+                      checked={classificationFilter.has(v)}
                       onChange={() => onClassificationFilterChange(v)}
                       disabled={!active}
                       className="accent-accent"
