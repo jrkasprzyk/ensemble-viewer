@@ -431,6 +431,7 @@ export default function App() {
               onLineStyleControlsChange={setLineStyleControls}
               axisRanges={axisRanges}
               onAxisRangesChange={setAxisRanges}
+              indexType={indexType}
               splitBy={splitBy}
               onSplitByChange={setSplitBy}
               tieCategoryA={tieCategoryA}

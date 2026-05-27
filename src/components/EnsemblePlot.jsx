@@ -146,7 +146,7 @@ export default function EnsemblePlot({
         ticks: 'outside',
         tickcolor: '#1a1a1a',
         title: { text: xAxisLabel || indexColumn, standoff: 8 },
-        ...rangeForAxis(axisRanges?.xMin, axisRanges?.xMax),
+        ...rangeForAxis(axisRanges?.xMin, axisRanges?.xMax, indexType),
       },
       yaxis: {
         gridcolor: '#e6e3db',
@@ -186,9 +186,10 @@ export default function EnsemblePlot({
   )
 }
 
-function rangeForAxis(minRaw, maxRaw) {
+function rangeForAxis(minRaw, maxRaw, axisType = 'numeric') {
   const parse = (v) => {
     if (v === undefined || v === null || v === '') return null
+    if (axisType === 'datetime') return String(v)
     const n = Number(v)
     return Number.isFinite(n) ? n : null
   }
@@ -211,4 +212,3 @@ function hexToRgba(hex, alpha) {
   const b = bigint & 255
   return `rgba(${r},${g},${b},${alpha})`
 }
-

@@ -52,6 +52,7 @@ export default function LabelControls({
   onLineStyleControlsChange,
   axisRanges,
   onAxisRangesChange,
+  indexType,
   splitBy,
   onSplitByChange,
   tieCategoryA,
@@ -226,22 +227,22 @@ export default function LabelControls({
                 <div className="flex flex-col gap-0.5">
                   <label className="font-mono text-[10px] text-muted">Min</label>
                   <input
-                    type="number"
-                    step="any"
+                    type={indexType === 'datetime' ? 'text' : 'number'}
+                    step={indexType === 'datetime' ? undefined : 'any'}
                     value={axisRanges.xMin}
                     onChange={setAxis('xMin')}
-                    placeholder="auto"
+                    placeholder={indexType === 'datetime' ? 'YYYY-MM-DD' : 'auto'}
                     className="px-2 py-1 border border-rule bg-paper font-mono"
                   />
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <label className="font-mono text-[10px] text-muted">Max</label>
                   <input
-                    type="number"
-                    step="any"
+                    type={indexType === 'datetime' ? 'text' : 'number'}
+                    step={indexType === 'datetime' ? undefined : 'any'}
                     value={axisRanges.xMax}
                     onChange={setAxis('xMax')}
-                    placeholder="auto"
+                    placeholder={indexType === 'datetime' ? 'YYYY-MM-DD' : 'auto'}
                     className="px-2 py-1 border border-rule bg-paper font-mono"
                   />
                 </div>
