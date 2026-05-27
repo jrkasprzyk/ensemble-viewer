@@ -398,6 +398,42 @@ export function applyClassificationMapping(rawByTraceNum, columns) {
 }
 
 // ---------------------------------------------------------------------------
+// Bundled classification
+// ---------------------------------------------------------------------------
+
+export const BUNDLED_CATEGORY = '_bundled'
+
+/**
+ * Derive a bundled Failure/Success label for each column by combining multiple
+ * classification horizons with AND or OR logic.
+ *
+ * OR:  Failure if ANY selected horizon label === 'Failure', else Success
+ * AND: Failure if ALL selected horizon labels === 'Failure', else Success
+ *
+ * Throws if a selected horizon is absent from any column's labels.
+ *
+ * @param {Record<string, Record<string, string>>} labelsByColumn
+ * @param {string[]} selectedHorizons
+ * @param {'AND'|'OR'} logic
+ * @returns {Record<string, Record<string, string>>}
+ */
+export function buildBundledLabels(labelsByColumn, selectedHorizons, logic) {
+  if (!selectedHorizons.length) return {}
+  const out = {}
+  for (const [col, labels] of Object.entries(labelsByColumn)) {
+    for (const h of selectedHorizons) {
+      if (!(h in labels)) throw new Error(`Horizon "${h}" missing from column "${col}"`)
+    }
+    const vals = selectedHorizons.map((h) => labels[h])
+    const derived = logic === 'OR'
+      ? (vals.includes('Failure') ? 'Failure' : 'Success')
+      : (vals.every((v) => v === 'Failure') ? 'Failure' : 'Success')
+    out[col] = { [BUNDLED_CATEGORY]: derived }
+  }
+  return out
+}
+
+// ---------------------------------------------------------------------------
 
 /**
  * Auto-detect whether the index column holds dates or plain numbers.

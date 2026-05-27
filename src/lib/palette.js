@@ -28,6 +28,11 @@ export function buildColorMap(values) {
 
 export const NEUTRAL_GRAY = '#9a9894'
 
+export const BUNDLED_COLOR_MAP = {
+  'Success': '#009E73',
+  'Failure': '#D55E00',
+}
+
 import chroma from 'chroma-js'
 
 /**

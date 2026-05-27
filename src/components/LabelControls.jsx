@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { OKABE_ITO } from '../lib/palette.js'
-import { parseFiniteLabelNumber } from '../lib/labels.js'
+import { parseFiniteLabelNumber, BUNDLED_CATEGORY } from '../lib/labels.js'
 import { DEFAULT_STYLE_MULTIPLIER, MIN_STYLE_MULTIPLIER, MAX_STYLE_MULTIPLIER } from '../lib/plotStyle.js'
 
 /**
@@ -40,8 +40,19 @@ export default function LabelControls({
   numericCategories,
   sortRangeControl,   // { domain: { min, max }, value: { min, max } } | null
   onSortRangeChange,
+  classificationSchemeNames = [],
+  selectedHorizons,
+  horizonLogic,
+  bundledFilter,
+  classificationFilter,
+  onHorizonToggle,
+  onHorizonDeselectAll,
+  onHorizonLogicChange,
+  onBundledFilterChange,
+  onClassificationFilterChange,
 }) {
   const categoryNames = useMemo(() => Object.keys(categoryValues), [categoryValues])
+  const classificationSchemeSet = useMemo(() => new Set(classificationSchemeNames), [classificationSchemeNames])
   const [sortMinDraft, setSortMinDraft] = useState('')
   const [sortMaxDraft, setSortMaxDraft] = useState('')
 
@@ -274,7 +285,129 @@ export default function LabelControls({
         <p className="text-muted">No labels detected. Configure a label strategy.</p>
       )}
 
+      {classificationSchemeNames.length > 0 && (
+        <div className="border border-rule bg-paper rounded-sm">
+          <div className="px-3 py-2 border-b border-rule flex items-center justify-between gap-2">
+            <span className="font-mono uppercase tracking-wider text-[10px] text-muted">
+              Bundled Classification
+            </span>
+            <label className="flex items-center gap-1 cursor-pointer">
+              <input
+                type="radio"
+                name="color-by"
+                checked={colorBy === BUNDLED_CATEGORY}
+                onChange={() => onColorByChange(BUNDLED_CATEGORY)}
+                disabled={!selectedHorizons.size}
+                className="accent-accent"
+              />
+              <span className={`text-[10px] font-mono uppercase tracking-wider ${!selectedHorizons.size ? 'text-muted' : ''}`}>
+                Color
+              </span>
+            </label>
+          </div>
+          <div className="px-3 py-2 flex flex-col gap-2">
+            <button
+              onClick={onHorizonDeselectAll}
+              className="self-start text-[10px] font-mono uppercase tracking-wider text-muted hover:text-ink"
+            >
+              Deselect all
+            </button>
+            <div className="flex flex-wrap gap-x-3 gap-y-1">
+              {classificationSchemeNames.map((scheme) => (
+                <label key={scheme} className="flex items-center gap-1 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedHorizons.has(scheme)}
+                    onChange={() => onHorizonToggle(scheme)}
+                    className="accent-accent"
+                  />
+                  <span className="font-mono text-[10px]">{scheme}</span>
+                </label>
+              ))}
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] text-muted font-mono">Logic:</span>
+              {['AND', 'OR'].map((l) => (
+                <label key={l} className="flex items-center gap-1 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="horizon-logic"
+                    checked={horizonLogic === l}
+                    onChange={() => onHorizonLogicChange(l)}
+                    className="accent-accent"
+                  />
+                  <span className="font-mono text-[10px]">{l}</span>
+                </label>
+              ))}
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] text-muted font-mono">Filter:</span>
+              {['Failure', 'Success'].map((v) => (
+                <label key={v} className={`flex items-center gap-1 ${selectedHorizons.size ? 'cursor-pointer' : 'cursor-default'}`}>
+                  <input
+                    type="checkbox"
+                    checked={bundledFilter.has(v)}
+                    onChange={() => onBundledFilterChange(v)}
+                    disabled={!selectedHorizons.size}
+                    className="accent-accent"
+                  />
+                  <span className={`font-mono text-[10px] ${!selectedHorizons.size ? 'text-muted' : ''}`}>{v}</span>
+                </label>
+              ))}
+            </div>
+            {!selectedHorizons.size && (
+              <p className="text-[11px] text-muted">Select time horizons to enable bundled classification.</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {classificationSchemeNames.length > 0 && (
+        <div className="border border-rule bg-paper rounded-sm">
+          <div className="px-3 py-2 border-b border-rule flex items-center gap-3">
+            <span className="font-mono uppercase tracking-wider text-[10px] text-muted">
+              Individual Classifications
+            </span>
+            <div className="flex items-center gap-3 ml-auto">
+              {['Failure', 'Success'].map((v) => {
+                const active = classificationSchemeSet.has(colorBy)
+                return (
+                  <label key={v} className={`flex items-center gap-1 ${active ? 'cursor-pointer' : 'cursor-default'}`}>
+                    <input
+                      type="checkbox"
+                      checked={classificationFilter.has(v)}
+                      onChange={() => onClassificationFilterChange(v)}
+                      disabled={!active}
+                      className="accent-accent"
+                    />
+                    <span className={`font-mono text-[10px] ${!active ? 'text-muted' : ''}`}>{v}</span>
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+          <div className="px-3 py-2 flex flex-col gap-1">
+            {classificationSchemeNames.map((scheme) => (
+              <div key={scheme} className="flex items-center justify-between">
+                <span className="font-mono text-[10px]">{scheme}</span>
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="color-by"
+                    checked={colorBy === scheme}
+                    onChange={() => onColorByChange(scheme)}
+                    className="accent-accent"
+                  />
+                  <span className="text-[10px] font-mono uppercase tracking-wider">Color</span>
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {categoryNames.map((cat) => {
+        if (classificationSchemeSet.has(cat) || cat === BUNDLED_CATEGORY) return null
         const rawValues = categoryValues[cat]
         const active = activeByCategory[cat] || new Set()
         const isSortTarget = cat === sortCategory || cat.split(' + ').includes(sortCategory)
