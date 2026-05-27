@@ -196,7 +196,10 @@ function rangeForAxis(minRaw, maxRaw, axisType = 'numeric') {
   const lo = parse(minRaw)
   const hi = parse(maxRaw)
   if (lo === null && hi === null) return {}
-  if (lo !== null && hi !== null) return { autorange: false, range: [lo, hi] }
+  if (lo !== null && hi !== null) {
+    if (lo >= hi) return {}
+    return { autorange: false, range: [lo, hi] }
+  }
   // Partial bounds: fix one side, let Plotly auto-fit the other side to the data.
   // `autorange: 'min'` means "extend the min automatically" (so we're fixing max);
   // `autorange: 'max'` means "extend the max automatically" (so we're fixing min).

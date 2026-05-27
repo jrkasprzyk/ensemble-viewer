@@ -91,8 +91,23 @@ export default function LabelControls({
     setSortMaxDraft(String(sortRangeControl.value.max))
   }, [sortRangeControl?.value.min, sortRangeControl?.value.max])
 
-  const setAxis = (key) => (e) => onAxisRangesChange({ ...axisRanges, [key]: e.target.value })
+  const setAxis = (key) => (e) => {
+    const value = e.target.value
+    onAxisRangesChange(prev => ({ ...prev, [key]: value }))
+  }
   const anyBound = axisRanges && (axisRanges.xMin || axisRanges.xMax || axisRanges.yMin || axisRanges.yMax)
+
+  const yRangeError =
+    axisRanges.yMin !== '' && axisRanges.yMax !== '' &&
+    Number.isFinite(Number(axisRanges.yMin)) && Number.isFinite(Number(axisRanges.yMax)) &&
+    Number(axisRanges.yMin) >= Number(axisRanges.yMax)
+
+  const xRangeError = axisRanges.xMin !== '' && axisRanges.xMax !== '' && (
+    indexType === 'datetime'
+      ? axisRanges.xMin >= axisRanges.xMax
+      : Number.isFinite(Number(axisRanges.xMin)) && Number.isFinite(Number(axisRanges.xMax)) &&
+        Number(axisRanges.xMin) >= Number(axisRanges.xMax)
+  )
 
   return (
     <div className="flex flex-col gap-3 text-xs">
@@ -205,7 +220,7 @@ export default function LabelControls({
                     value={axisRanges.yMin}
                     onChange={setAxis('yMin')}
                     placeholder="auto"
-                    className="px-2 py-1 border border-rule bg-paper font-mono"
+                    className={`px-2 py-1 border bg-paper font-mono ${yRangeError ? 'border-red-500' : 'border-rule'}`}
                   />
                 </div>
                 <div className="flex flex-col gap-0.5">
@@ -216,10 +231,13 @@ export default function LabelControls({
                     value={axisRanges.yMax}
                     onChange={setAxis('yMax')}
                     placeholder="auto"
-                    className="px-2 py-1 border border-rule bg-paper font-mono"
+                    className={`px-2 py-1 border bg-paper font-mono ${yRangeError ? 'border-red-500' : 'border-rule'}`}
                   />
                 </div>
               </div>
+              {yRangeError && (
+                <p className="text-[10px] text-red-500">Min must be less than Max</p>
+              )}
             </div>
             <div className="flex flex-col gap-1">
               <span className="font-mono text-[10px] text-muted">X axis</span>
@@ -232,7 +250,7 @@ export default function LabelControls({
                     value={axisRanges.xMin}
                     onChange={setAxis('xMin')}
                     placeholder={indexType === 'datetime' ? 'YYYY-MM-DD' : 'auto'}
-                    className="px-2 py-1 border border-rule bg-paper font-mono"
+                    className={`px-2 py-1 border bg-paper font-mono ${xRangeError ? 'border-red-500' : 'border-rule'}`}
                   />
                 </div>
                 <div className="flex flex-col gap-0.5">
@@ -243,10 +261,13 @@ export default function LabelControls({
                     value={axisRanges.xMax}
                     onChange={setAxis('xMax')}
                     placeholder={indexType === 'datetime' ? 'YYYY-MM-DD' : 'auto'}
-                    className="px-2 py-1 border border-rule bg-paper font-mono"
+                    className={`px-2 py-1 border bg-paper font-mono ${xRangeError ? 'border-red-500' : 'border-rule'}`}
                   />
                 </div>
               </div>
+              {xRangeError && (
+                <p className="text-[10px] text-red-500">Min must be less than Max</p>
+              )}
             </div>
             {anyBound && (
               <button
