@@ -47,6 +47,9 @@ web_modules/
 # TypeScript cache
 *.tsbuildinfo
 
+# Obsidian directory
+plan/.obsidian/
+
 # Optional npm cache directory
 .npm
 
