@@ -3,6 +3,14 @@
 // and user preferences for line thickness and opacity (lineStyleControls).
 // The styling is designed to maintain readability across a wide range of ensemble sizes, from sparse to dense.
 
+// Width/opacity resolution precedence (per dimension, independent):
+//   1. Absolute override — a finite lineStyleControls.widthOverride / opacityOverride wins outright.
+//      Overrides are CLAMPED to [MIN_LINE_WIDTH, MAX_LINE_WIDTH] / [MIN_LINE_OPACITY, MAX_LINE_OPACITY]
+//      but are otherwise ABSOLUTE: the BAND_OPACITY_SCALE band reduction is NOT applied on this path
+//      (DR-04). Each dimension is independent (DR-05) — width may be overridden while opacity stays auto.
+//   2. Computed (slider) path — clamp((SCALE / sqrt(N)) * styleMultiplier, MIN, MAX). The band-opacity
+//      reduction applies here only when bands are actually drawn (the `bandsActive` argument, DR-06).
+
 // The model is clamp((SCALE / sqrt(N)) * styleMultiplier, MIN, MAX) for both width and opacity, where:
 //
 // Runtime/user-controlled inputs:
@@ -20,12 +28,12 @@
 // - N=1000 -> 1.5 (clamped)
 
 const LINE_WIDTH_SCALE = 34
-const MIN_LINE_WIDTH = 1.5
-const MAX_LINE_WIDTH = 5
+export const MIN_LINE_WIDTH = 1.5
+export const MAX_LINE_WIDTH = 5
 
 const LINE_OPACITY_SCALE = 3
-const MIN_LINE_OPACITY = 0.1
-const MAX_LINE_OPACITY = 1
+export const MIN_LINE_OPACITY = 0.1
+export const MAX_LINE_OPACITY = 1
 export const MIN_BAND_LINE_OPACITY = 0.16
 const BAND_OPACITY_SCALE = 0.7
 
@@ -37,7 +45,7 @@ export const MAX_STYLE_MULTIPLIER = 4
 export const DEFAULT_STYLE_MULTIPLIER = 1
 
 
-export function resolveLineStyling(lineCount, showBands, lineStyleControls = {}) {
+export function resolveLineStyling(lineCount, bandsActive, lineStyleControls = {}) {
   // Guard against invalid counts by falling back to 1, avoiding division by zero
   const safeCount = Number.isFinite(lineCount) && lineCount > 0 ? lineCount : 1
 
@@ -46,19 +54,51 @@ export function resolveLineStyling(lineCount, showBands, lineStyleControls = {})
   const thicknessMultiplier = getClampedStyleMultiplier(lineStyleControls?.thickness)
   const opacityMultiplier = getClampedStyleMultiplier(lineStyleControls?.opacity)
 
-  // Scale line width inversely with sqrt(N) so denser ensembles use thinner lines,
-  // then apply the user thickness multiplier and clamp to the allowed width range
-  const width = clamp((LINE_WIDTH_SCALE / Math.sqrt(safeCount)) * thicknessMultiplier, MIN_LINE_WIDTH, MAX_LINE_WIDTH)
+  // --- Width ---
+  let width
+  if (Number.isFinite(lineStyleControls?.widthOverride)) {
+    // Absolute override (DR-04/DR-05): clamp only, bypass computed path entirely.
+    width = clamp(lineStyleControls.widthOverride, MIN_LINE_WIDTH, MAX_LINE_WIDTH)
+  } else {
+    // Scale line width inversely with sqrt(N) so denser ensembles use thinner lines,
+    // then apply the user thickness multiplier and clamp to the allowed width range
+    width = clamp((LINE_WIDTH_SCALE / Math.sqrt(safeCount)) * thicknessMultiplier, MIN_LINE_WIDTH, MAX_LINE_WIDTH)
+  }
 
-  // Scale base opacity inversely with sqrt(N) so denser ensembles are more transparent,
-  // then apply the user opacity multiplier and clamp to the allowed opacity range
-  const baseOpacity = clamp((LINE_OPACITY_SCALE / Math.sqrt(safeCount)) * opacityMultiplier, MIN_LINE_OPACITY, MAX_LINE_OPACITY)
-
-  // When summary bands are visible, reduce opacity further to avoid obscuring the bands,
-  // while enforcing a floor so individual traces remain visible
-  const opacity = showBands ? Math.max(MIN_BAND_LINE_OPACITY, baseOpacity * BAND_OPACITY_SCALE) : baseOpacity
+  // --- Opacity ---
+  let opacity
+  if (Number.isFinite(lineStyleControls?.opacityOverride)) {
+    // Absolute override (DR-04): clamp only. The band-opacity reduction is NOT
+    // applied on the override path — overrides are absolute.
+    opacity = clamp(lineStyleControls.opacityOverride, MIN_LINE_OPACITY, MAX_LINE_OPACITY)
+  } else {
+    // Scale base opacity inversely with sqrt(N) so denser ensembles are more transparent,
+    // then apply the user opacity multiplier and clamp to the allowed opacity range
+    const baseOpacity = clamp((LINE_OPACITY_SCALE / Math.sqrt(safeCount)) * opacityMultiplier, MIN_LINE_OPACITY, MAX_LINE_OPACITY)
+    // When summary bands are actually drawn, reduce opacity further to avoid obscuring the
+    // bands, while enforcing a floor so individual traces remain visible (DR-06).
+    opacity = bandsActive ? Math.max(MIN_BAND_LINE_OPACITY, baseOpacity * BAND_OPACITY_SCALE) : baseOpacity
+  }
 
   return { lineWidth: width, opacity }
+}
+
+/**
+ * Map a tick-precision option to a d3-format code for Plotly's axis.tickformat.
+ *
+ * @param {'auto'|'int'|'1'|'2'} option   Precision selection.
+ * @param {'numeric'|'datetime'} axisType Axis kind; datetime always yields '' (no override).
+ * @returns {string} d3-format code, or '' to let Plotly auto-format.
+ */
+export function tickFormatString(option, axisType) {
+  if (axisType === 'datetime') return ''
+  switch (option) {
+    case 'int': return 'd'
+    case '1': return '.1f'
+    case '2': return '.2f'
+    case 'auto':
+    default: return ''
+  }
 }
 
 function clamp(value, min, max) {

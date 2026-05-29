@@ -7,7 +7,7 @@ const PlotlyLib = Plotly?.default ?? Plotly
 const Plot = createPlotlyComponent(PlotlyLib)
 import { NEUTRAL_GRAY } from '../lib/palette.js'
 import { computeGroupStats } from '../lib/stats.js'
-import { resolveLineStyling } from '../lib/plotStyle.js'
+import { resolveLineStyling, tickFormatString } from '../lib/plotStyle.js'
 
 /**
  * EnsemblePlot
@@ -34,8 +34,10 @@ export default function EnsemblePlot({
   showBands,        // boolean — draw percentile bands per group
   indexType,        // 'datetime' | 'numeric'
   xAxisLabel,       // optional x-axis label override
-  yAxisLabel,       // optional y-axis label
-  lineStyleControls, // { thickness: number, opacity: number }
+  yAxisLabel,       // optional y-axis label (manual override)
+  defaultYAxisLabel, // auto-derived y-axis label from slot/units (DR-09 fallback)
+  lineStyleControls, // { thickness, opacity, widthOverride, opacityOverride }
+  tickFormat,        // { x: 'auto'|'int'|'1'|'2', y: ... } per-axis tick precision
   axisRanges,        // { xMin, xMax, yMin, yMax } strings; empty = auto
 }) {
   const { traces, layout } = useMemo(() => {
@@ -43,9 +45,25 @@ export default function EnsemblePlot({
 
     const x = rows.map((r) => r[indexColumn])
     const visibleLineCount = Math.max(1, columns.filter((col) => visibleColumns.has(col)).length)
+
+    // Group visible columns by colorBy value so we know which groups can produce a band.
+    // Bands draw only for groups with >=2 visible members (a band of one is just the line).
+    const groups = {} // value -> [columns]
+    if (colorBy) {
+      for (const c of columns) {
+        if (!visibleColumns.has(c)) continue
+        const v = labelsByColumn[c]?.[colorBy] ?? ''
+        ;(groups[v] ??= []).push(c)
+      }
+    }
+    // bandsActive: bands are ACTUALLY drawn (DR-06). Dimming keys off this, not raw showBands,
+    // so traces are never dimmed when zero bands render (the "everything got lighter" defect).
+    const bandsActive =
+      showBands && !!colorBy && Object.values(groups).some((g) => g.length >= 2)
+
     const { lineWidth: individualLineWidth, opacity: individualOpacity } = resolveLineStyling(
       visibleLineCount,
-      showBands,
+      bandsActive,
       lineStyleControls
     )
 
@@ -76,19 +94,15 @@ export default function EnsemblePlot({
       })
     }
 
-    // Summary bands per colorBy group
-    if (showBands && colorBy) {
-      const groups = {} // value -> [columns]
-      for (const c of columns) {
-        if (!visibleColumns.has(c)) continue
-        const v = labelsByColumn[c]?.[colorBy] ?? ''
-        ;(groups[v] ??= []).push(c)
-      }
+    // Summary bands per colorBy group (reuse the groups computed above).
+    // Mean lines are regular `scatter` (SVG), which Plotly renders above the
+    // `scattergl` (WebGL) individual traces, so the mean always sits on top.
+    if (bandsActive) {
       for (const [val, groupCols] of Object.entries(groups)) {
         if (groupCols.length < 2) continue // band of one is just the line
         const { mean, percentiles } = computeGroupStats(rows, indexColumn, groupCols, [0.1, 0.5, 0.9])
         const color = resolvedColorMap[val] || NEUTRAL_GRAY
-        const rgba = hexToRgba(color, 0.18)
+        const rgba = hexToRgba(color, 0.25)
 
         // Lower bound — invisible line used only as the bottom anchor for the fill.
         // ORDERING CONSTRAINT: this trace MUST be pushed immediately before the
@@ -146,6 +160,7 @@ export default function EnsemblePlot({
         ticks: 'outside',
         tickcolor: '#1a1a1a',
         title: { text: xAxisLabel || indexColumn, standoff: 8 },
+        ...tickFormatLayout(tickFormat?.x, indexType),
         ...rangeForAxis(axisRanges?.xMin, axisRanges?.xMax, indexType),
       },
       yaxis: {
@@ -153,11 +168,15 @@ export default function EnsemblePlot({
         linecolor: '#1a1a1a',
         ticks: 'outside',
         tickcolor: '#1a1a1a',
-        title: yAxisLabel ? { text: yAxisLabel, standoff: 8 } : undefined,
+        // DR-09: manual yAxisLabel (non-empty) wins; else the auto-derived default.
+        title: (yAxisLabel || defaultYAxisLabel)
+          ? { text: yAxisLabel || defaultYAxisLabel, standoff: 8 }
+          : undefined,
         zeroline: false,
+        ...tickFormatLayout(tickFormat?.y, 'numeric'),
         ...rangeForAxis(axisRanges?.yMin, axisRanges?.yMax),
       },
-      showlegend: showBands && !!colorBy,
+      showlegend: bandsActive,
       legend: {
         bgcolor: 'rgba(250,250,247,0.9)',
         bordercolor: '#d9d7d0',
@@ -168,7 +187,7 @@ export default function EnsemblePlot({
     }
 
     return { traces, layout }
-  }, [rows, indexColumn, columns, labelsByColumn, colorBy, colorMap, visibleColumns, showBands, indexType, xAxisLabel, yAxisLabel, lineStyleControls, axisRanges])
+  }, [rows, indexColumn, columns, labelsByColumn, colorBy, colorMap, visibleColumns, showBands, indexType, xAxisLabel, yAxisLabel, defaultYAxisLabel, lineStyleControls, tickFormat, axisRanges])
 
   return (
     <Plot
@@ -184,6 +203,13 @@ export default function EnsemblePlot({
       }}
     />
   )
+}
+
+// Returns { tickformat } when a precision override applies, or {} to omit the key
+// entirely (Plotly auto-format). Datetime axes never receive an override.
+function tickFormatLayout(option, axisType) {
+  const fmt = tickFormatString(option ?? 'auto', axisType)
+  return fmt ? { tickformat: fmt } : {}
 }
 
 function rangeForAxis(minRaw, maxRaw, axisType = 'numeric') {

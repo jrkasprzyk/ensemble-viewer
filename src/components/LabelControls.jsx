@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { OKABE_ITO } from '../lib/palette.js'
 import { parseFiniteLabelNumber, BUNDLED_CATEGORY } from '../lib/labels.js'
-import { DEFAULT_STYLE_MULTIPLIER, MIN_STYLE_MULTIPLIER, MAX_STYLE_MULTIPLIER } from '../lib/plotStyle.js'
+import {
+  DEFAULT_STYLE_MULTIPLIER,
+  MIN_STYLE_MULTIPLIER,
+  MAX_STYLE_MULTIPLIER,
+  MIN_LINE_WIDTH,
+  MAX_LINE_WIDTH,
+} from '../lib/plotStyle.js'
 
 // Editorial accent stripes tuned to the cream paper + burnt-orange palette.
 // Five tones, each used in exactly one section: a colored left-edge rule
@@ -46,10 +52,14 @@ export default function LabelControls({
   onShowBandsChange,
   xAxisLabel,
   yAxisLabel,
+  defaultYAxisLabel,
   onXAxisLabelChange,
   onYAxisLabelChange,
   lineStyleControls,
   onLineStyleControlsChange,
+  tickFormat,
+  onTickFormatChange,
+  bandsActive,
   axisRanges,
   onAxisRangesChange,
   indexType,
@@ -127,7 +137,12 @@ export default function LabelControls({
         </label>
         {!colorBy && (
           <p className="text-[11px] text-muted">
-            Pick a category to color by — bands require a grouping.
+            Bands require a color-by grouping — pick a category to color by first.
+          </p>
+        )}
+        {showBands && colorBy && !bandsActive && (
+          <p className="text-[11px] text-[#c94a1a]">
+            Bands need ≥2 traces per colored group — none of the visible groups qualify yet.
           </p>
         )}
         <div className="flex flex-col gap-1">
@@ -150,7 +165,7 @@ export default function LabelControls({
             type="text"
             value={yAxisLabel}
             onChange={(e) => onYAxisLabelChange(e.target.value)}
-            placeholder="Pool Elevation (ft)"
+            placeholder={defaultYAxisLabel || 'Pool Elevation (ft)'}
             className="px-2 py-1 border border-rule bg-paper font-mono"
           />
         </div>
@@ -169,11 +184,12 @@ export default function LabelControls({
               max={MAX_STYLE_MULTIPLIER}
               step="0.05"
               value={lineStyleControls.thickness}
+              disabled={Number.isFinite(lineStyleControls.widthOverride)}
               onChange={(e) => onLineStyleControlsChange({
                 ...lineStyleControls,
                 thickness: Number(e.target.value),
               })}
-              className="col-span-2 accent-accent"
+              className="col-span-2 accent-accent disabled:opacity-40"
             />
             <label htmlFor="line-opacity" className="font-mono text-[10px] text-muted">Opacity</label>
             <span className="font-mono text-[10px]">{lineStyleControls.opacity.toFixed(2)}×</span>
@@ -184,19 +200,121 @@ export default function LabelControls({
               max={MAX_STYLE_MULTIPLIER}
               step="0.05"
               value={lineStyleControls.opacity}
+              disabled={Number.isFinite(lineStyleControls.opacityOverride)}
               onChange={(e) => onLineStyleControlsChange({
                 ...lineStyleControls,
                 opacity: Number(e.target.value),
               })}
-              className="col-span-2 accent-accent"
+              className="col-span-2 accent-accent disabled:opacity-40"
             />
             <button
               type="button"
-              onClick={() => onLineStyleControlsChange({ thickness: DEFAULT_STYLE_MULTIPLIER, opacity: DEFAULT_STYLE_MULTIPLIER })}
+              onClick={() => onLineStyleControlsChange({
+                thickness: DEFAULT_STYLE_MULTIPLIER,
+                opacity: DEFAULT_STYLE_MULTIPLIER,
+                widthOverride: null,
+                opacityOverride: null,
+              })}
               className="justify-self-start text-[10px] font-mono uppercase tracking-wider text-muted hover:text-ink"
             >
               Reset line styling
             </button>
+          </div>
+          <div className="mt-1 flex flex-col gap-2 border-t border-rule pt-2">
+            <span className="font-mono uppercase tracking-wider text-[10px] text-muted">Manual values</span>
+            <p className="text-[10px] text-muted leading-snug">
+              Enter an absolute value to override the auto sqrt(N) scaling for that dimension.
+              Blank re-enables the slider.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-0.5">
+                <label htmlFor="line-width-override" className="font-mono text-[10px] text-muted">
+                  Width (px)
+                </label>
+                <input
+                  id="line-width-override"
+                  type="number"
+                  step="0.1"
+                  min={MIN_LINE_WIDTH}
+                  max={MAX_LINE_WIDTH}
+                  value={lineStyleControls.widthOverride ?? ''}
+                  placeholder="auto"
+                  onChange={(e) => {
+                    const raw = e.target.value
+                    const parsed = Number(raw)
+                    onLineStyleControlsChange({
+                      ...lineStyleControls,
+                      widthOverride: raw === '' || !Number.isFinite(parsed) ? null : parsed,
+                    })
+                  }}
+                  className="px-2 py-1 border border-rule bg-paper font-mono"
+                />
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <label htmlFor="line-opacity-override" className="font-mono text-[10px] text-muted">
+                  Opacity (0–1)
+                </label>
+                <input
+                  id="line-opacity-override"
+                  type="number"
+                  step="0.05"
+                  min={0}
+                  max={1}
+                  value={lineStyleControls.opacityOverride ?? ''}
+                  placeholder="auto"
+                  onChange={(e) => {
+                    const raw = e.target.value
+                    const parsed = Number(raw)
+                    onLineStyleControlsChange({
+                      ...lineStyleControls,
+                      opacityOverride: raw === '' || !Number.isFinite(parsed) ? null : parsed,
+                    })
+                  }}
+                  className="px-2 py-1 border border-rule bg-paper font-mono"
+                />
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details className="flex flex-col gap-2">
+          <summary className="cursor-pointer font-mono uppercase tracking-wider text-[10px] text-muted" aria-label="Tick precision controls">
+            Tick precision
+          </summary>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <div className="flex flex-col gap-0.5">
+              <label htmlFor="x-tick-format" className="font-mono text-[10px] text-muted">
+                X tick precision
+              </label>
+              <select
+                id="x-tick-format"
+                value={indexType === 'datetime' ? 'auto' : (tickFormat?.x ?? 'auto')}
+                disabled={indexType === 'datetime'}
+                onChange={(e) => onTickFormatChange('x', e.target.value)}
+                className="px-2 py-1 border border-rule bg-paper font-mono disabled:opacity-40"
+              >
+                <option value="auto">{indexType === 'datetime' ? 'n/a (datetime)' : 'Auto'}</option>
+                <option value="int">Integer</option>
+                <option value="1">1 decimal</option>
+                <option value="2">2 decimals</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <label htmlFor="y-tick-format" className="font-mono text-[10px] text-muted">
+                Y tick precision
+              </label>
+              <select
+                id="y-tick-format"
+                value={tickFormat?.y ?? 'auto'}
+                onChange={(e) => onTickFormatChange('y', e.target.value)}
+                className="px-2 py-1 border border-rule bg-paper font-mono"
+              >
+                <option value="auto">Auto</option>
+                <option value="int">Integer</option>
+                <option value="1">1 decimal</option>
+                <option value="2">2 decimals</option>
+              </select>
+            </div>
           </div>
         </details>
 
