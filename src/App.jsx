@@ -24,7 +24,7 @@ import {
 } from './lib/labels.js'
 import { buildColorMap, buildSequentialColorMap, BUNDLED_COLOR_MAP } from './lib/palette.js'
 import { DEFAULT_STYLE_MULTIPLIER, resolveLineStyling } from './lib/plotStyle.js'
-import { deriveYAxisLabel } from './lib/slotLabels.js'
+import { deriveYAxisLabel, formatSlotLabel } from './lib/slotLabels.js'
 import ConfigControls from './components/ConfigControls.jsx'
 import { DEFAULT_CONFIG } from './lib/config.js'
 
@@ -301,10 +301,13 @@ export default function App() {
 
   // Auto y-axis label from injected slot/units (or the SLOT_LABELS fallback).
   // DR-09: this is the default; a non-empty manual yAxisLabel overrides it downstream.
-  const defaultYAxisLabel = useMemo(
-    () => deriveYAxisLabel(effectiveLabelsByColumn, columns),
-    [effectiveLabelsByColumn, columns]
-  )
+  const defaultYAxisLabel = useMemo(() => {
+    const derived = deriveYAxisLabel(effectiveLabelsByColumn, columns)
+    if (derived) return derived
+
+    const selectedRdfSlot = rdf?.runs?.[0]?.slots?.[selectedSlot]
+    return formatSlotLabel(selectedRdfSlot?.slot_name, selectedRdfSlot?.units)
+  }, [effectiveLabelsByColumn, columns, rdf, selectedSlot])
 
   const { sortableNumberByColumn, numericDomain } = useMemo(
     () => buildSortMetadata(labelsByColumn, sortCategory),

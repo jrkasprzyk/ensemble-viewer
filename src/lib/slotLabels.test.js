@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { SLOT_LABELS, deriveYAxisLabel } from './slotLabels.js'
+import { SLOT_LABELS, deriveYAxisLabel, formatSlotLabel } from './slotLabels.js'
 
 // Build a labelsByColumn map where every column carries the same injected
 // label categories (mirrors what rdfToDataset produces).
@@ -66,5 +66,19 @@ describe('deriveYAxisLabel', () => {
     expect(deriveYAxisLabel({}, [])).toBe('')
     expect(deriveYAxisLabel(null, columns)).toBe('')
     expect(deriveYAxisLabel(withLabels(columns, { slot: '', units: 'ft' }), columns)).toBe('')
+  })
+})
+
+describe('formatSlotLabel', () => {
+  it('formats a direct slot name + units pair', () => {
+    expect(formatSlotLabel('Pool Elevation', 'feet')).toBe('Pool Elevation (feet)')
+  })
+
+  it('falls back to the slot lookup table when units are missing', () => {
+    expect(formatSlotLabel('Storage', '')).toBe('Storage (acre-ft)')
+  })
+
+  it('returns empty string when no slot name is available', () => {
+    expect(formatSlotLabel('', 'ft')).toBe('')
   })
 })

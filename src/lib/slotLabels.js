@@ -42,6 +42,26 @@ export const SLOT_LABELS = {
 }
 
 /**
+ * Format a y-axis label from a slot name plus optional units, falling back to
+ * SLOT_LABELS when units were not provided directly.
+ *
+ * @param {string} slotName
+ * @param {string} units
+ * @returns {string}
+ */
+export function formatSlotLabel(slotName, units = '') {
+  const slot = String(slotName ?? '').trim()
+  const injectedUnits = String(units ?? '').trim()
+  if (!slot) return ''
+
+  const table = SLOT_LABELS[slot]
+  const label = table?.label ?? slot
+  const resolvedUnits = injectedUnits || table?.units || ''
+
+  return resolvedUnits ? `${label} (${resolvedUnits})` : label
+}
+
+/**
  * Read the first non-empty value of an injected label category across columns.
  * Returns '' when no column carries the category (or all values are empty).
  *
@@ -82,13 +102,5 @@ export function deriveYAxisLabel(labelsByColumn, columns) {
 
   const slot = firstLabelValue(labelsByColumn, columns, 'slot')
   const injectedUnits = firstLabelValue(labelsByColumn, columns, 'units')
-
-  if (!slot) return ''
-
-  const table = SLOT_LABELS[slot]
-  const label = table?.label ?? slot
-  // Parsed units always win; only consult the table when units weren't injected.
-  const units = injectedUnits || table?.units || ''
-
-  return units ? `${label} (${units})` : label
+  return formatSlotLabel(slot, injectedUnits)
 }
