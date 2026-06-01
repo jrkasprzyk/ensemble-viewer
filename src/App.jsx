@@ -5,6 +5,8 @@ import LabelControls from './components/LabelControls.jsx'
 const EnsemblePlot = lazy(() => import('./components/EnsemblePlot.jsx'))
 import { parseCsvFile } from './lib/parseCsv.js'
 import { parseXlsxFile } from './lib/parseXlsx.js'
+import { parseRdf, listSlots, rdfToDataset } from './lib/rdfParser.js'
+import { datasetToWideCsv, datasetToStackedCsv } from './lib/csvExport.js'
 import {
   parseLabelsFromNames,
   parseSidecarLabels,
@@ -22,12 +24,18 @@ import {
 } from './lib/labels.js'
 import { buildColorMap, buildSequentialColorMap, BUNDLED_COLOR_MAP } from './lib/palette.js'
 import { DEFAULT_STYLE_MULTIPLIER, resolveLineStyling } from './lib/plotStyle.js'
+import { deriveYAxisLabel, formatSlotLabel } from './lib/slotLabels.js'
+import ConfigControls from './components/ConfigControls.jsx'
+import { DEFAULT_CONFIG } from './lib/config.js'
 
 const EMPTY_LABEL = '⟨empty⟩'
 
 export default function App() {
   // Raw dataset
   const [file, setFile] = useState(null)           // the File object, kept so we can re-parse
+  const [rdf, setRdf] = useState(null)             // parsed RDF (TASK-019), null for CSV/XLSX
+  const [rdfSlots, setRdfSlots] = useState([])     // series slots available for selection
+  const [selectedSlot, setSelectedSlot] = useState('')
   const [columns, setColumns] = useState([])
   const [rows, setRows] = useState([])
   const [indexColumn, setIndexColumn] = useState('')
@@ -50,7 +58,10 @@ export default function App() {
   const [lineStyleControls, setLineStyleControls] = useState({
     thickness: DEFAULT_STYLE_MULTIPLIER,
     opacity: DEFAULT_STYLE_MULTIPLIER,
+    widthOverride: null,
+    opacityOverride: null,
   })
+  const [tickFormat, setTickFormat] = useState({ x: 'auto', y: 'auto' })
   const [axisRanges, setAxisRanges] = useState({ xMin: '', xMax: '', yMin: '', yMax: '' })
   const [splitBy, setSplitBy] = useState('')
   const [tieCategoryA, setTieCategoryA] = useState('')
@@ -72,6 +83,36 @@ export default function App() {
 
   // --- File loading ------------------------------------------------------
 
+  // Single source-agnostic setter path for CSV / XLSX / RDF datasets (PAT-003).
+  // `parsed` must match the parseCsvFile shape:
+  // { columns, indexColumn, rows, labelsByColumn, labelRowCount }.
+  function applyDataset(parsed) {
+    setColumns(parsed.columns)
+    setRows(parsed.rows)
+    setIndexColumn(parsed.indexColumn)
+    setIndexType(detectIndexType(parsed.rows, parsed.indexColumn))
+    setColorBy(null)
+    setLabelRowCount(parsed.labelRowCount)
+    setRawClassificationsByTrace(null)
+    setSelectedHorizons(new Set())
+    setHorizonLogic('OR')
+    setBundledFilter(new Set(['Failure', 'Success']))
+    setClassificationFilter(new Set(['Failure', 'Success']))
+
+    if (parsed.labelRowCount > 0 && Object.keys(parsed.labelsByColumn).length) {
+      setLabelsByColumn(parsed.labelsByColumn)
+      setLabelStrategy('headers')
+    } else {
+      setLabelsByColumn(
+        parseLabelsFromNames(parsed.columns, {
+          delimiter,
+          categories: parseCategoriesText(categoriesText),
+        })
+      )
+    }
+    setStatus(`Loaded ${parsed.columns.length} columns × ${parsed.rows.length} rows`)
+  }
+
   async function loadFile(f, { labelRowCount: lrc = null } = {}) {
     setError(null)
     setStatus(`Parsing ${f.name}…`)
@@ -81,34 +122,80 @@ export default function App() {
         ? await parseXlsxFile(f, { labelRowCount: lrc })
         : await parseCsvFile(f, { labelRowCount: lrc })
       setFile(f)
-      setColumns(parsed.columns)
-      setRows(parsed.rows)
-      setIndexColumn(parsed.indexColumn)
-      setIndexType(detectIndexType(parsed.rows, parsed.indexColumn))
-      setColorBy(null)
-      setLabelRowCount(parsed.labelRowCount)
-      setRawClassificationsByTrace(null)
-      setSelectedHorizons(new Set())
-      setHorizonLogic('OR')
-      setBundledFilter(new Set(['Failure', 'Success']))
-      setClassificationFilter(new Set(['Failure', 'Success']))
-
-      if (parsed.labelRowCount > 0 && Object.keys(parsed.labelsByColumn).length) {
-        setLabelsByColumn(parsed.labelsByColumn)
-        setLabelStrategy('headers')
-      } else {
-        setLabelsByColumn(
-          parseLabelsFromNames(parsed.columns, {
-            delimiter,
-            categories: parseCategoriesText(categoriesText),
-          })
-        )
-      }
-      setStatus(`Loaded ${parsed.columns.length} columns × ${parsed.rows.length} rows`)
+      setRdf(null)
+      setRdfSlots([])
+      setSelectedSlot('')
+      applyDataset(parsed)
     } catch (e) {
       console.error(e)
       setError(e.message || String(e))
       setStatus('')
+    }
+  }
+
+  // RDF flow (TASK-019): read text → parseRdf → store; the user then picks a
+  // series slot which converts to a dataset via the shared applyDataset path.
+  async function loadRdf(f) {
+    setError(null)
+    setStatus(`Parsing ${f.name}…`)
+    try {
+      const text = await f.text()
+      const parsedRdf = parseRdf(text)
+      const seriesSlots = listSlots(parsedRdf).filter((s) => s.scalar === false)
+      if (!seriesSlots.length) {
+        throw new Error('No series slots found in this RDF file.')
+      }
+      setFile(f)
+      setRdf(parsedRdf)
+      setRdfSlots(seriesSlots)
+      setSelectedSlot('')
+      // Clear any previously loaded dataset until a slot is chosen.
+      setRows([])
+      setColumns([])
+      setStatus(`Parsed ${f.name}: ${seriesSlots.length} series slot(s) — pick one to view`)
+    } catch (e) {
+      console.error(e)
+      setError(e.message || String(e))
+      setStatus('')
+    }
+  }
+
+  function selectRdfSlot(slotKey) {
+    if (!rdf || !slotKey) return
+    setError(null)
+    try {
+      const parsed = rdfToDataset(rdf, slotKey)
+      setSelectedSlot(slotKey)
+      applyDataset(parsed)
+    } catch (e) {
+      console.error(e)
+      setError(e.message || String(e))
+    }
+  }
+
+  // Serialize the current RDF-derived dataset to CSV and trigger a download.
+  // `format` is 'wide' (default) or 'stacked'.
+  function downloadDatasetCsv(format = 'wide') {
+    if (!rows.length) return
+    try {
+      const dataset = { columns, indexColumn, rows, labelsByColumn }
+      const csv = format === 'stacked'
+        ? datasetToStackedCsv(dataset)
+        : datasetToWideCsv(dataset)
+      const base = (selectedSlot || 'dataset').replace(/[^\w.-]+/g, '_')
+      const suffix = format === 'stacked' ? '_stacked' : ''
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${base}${suffix}.csv`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      console.error(e)
+      setError(e.message || String(e))
     }
   }
 
@@ -212,6 +299,16 @@ export default function App() {
 
   const categoryValues = useMemo(() => summarizeLabels(effectiveLabelsByColumn), [effectiveLabelsByColumn])
 
+  // Auto y-axis label from injected slot/units (or the SLOT_LABELS fallback).
+  // DR-09: this is the default; a non-empty manual yAxisLabel overrides it downstream.
+  const defaultYAxisLabel = useMemo(() => {
+    const derived = deriveYAxisLabel(effectiveLabelsByColumn, columns)
+    if (derived) return derived
+
+    const selectedRdfSlot = rdf?.runs?.[0]?.slots?.[selectedSlot]
+    return formatSlotLabel(selectedRdfSlot?.slot_name, selectedRdfSlot?.units)
+  }, [effectiveLabelsByColumn, columns, rdf, selectedSlot])
+
   const { sortableNumberByColumn, numericDomain } = useMemo(
     () => buildSortMetadata(labelsByColumn, sortCategory),
     [labelsByColumn, sortCategory]
@@ -301,10 +398,25 @@ export default function App() {
     })
   }, [columns, effectiveLabelsByColumn, effectiveActiveByCategory, categoryValues, sortRange, numericDomain, sortableNumberByColumn])
 
+  // Bands actually draw only when showBands is on, a colorBy grouping exists, and at
+  // least one colored group has >=2 visible traces (DR-06). The header readout and the
+  // opacity-dimming path both key off this, not the raw showBands flag.
+  const bandsActive = useMemo(() => {
+    if (!showBands || !colorBy) return false
+    const counts = {}
+    for (const col of columns) {
+      if (!visibleColumns.has(col)) continue
+      const v = effectiveLabelsByColumn[col]?.[colorBy] ?? ''
+      counts[v] = (counts[v] || 0) + 1
+      if (counts[v] >= 2) return true
+    }
+    return false
+  }, [showBands, colorBy, columns, visibleColumns, effectiveLabelsByColumn])
+
   const resolvedLineStyle = useMemo(() => {
     if (!rows.length) return null
-    return resolveLineStyling(visibleColumns.size, showBands, lineStyleControls)
-  }, [rows.length, visibleColumns.size, showBands, lineStyleControls])
+    return resolveLineStyling(visibleColumns.size, bandsActive, lineStyleControls)
+  }, [rows.length, visibleColumns.size, bandsActive, lineStyleControls])
 
   const plotGroups = useMemo(() => {
     if (!splitBy || !categoryValues[splitBy]) {
@@ -370,6 +482,82 @@ export default function App() {
     })
   }
 
+  // --- Config save / load (Phase 6a) -------------------------------------
+
+  // Gather the full serializable left-panel state for serializeConfig.
+  function getCurrentConfig() {
+    return {
+      labelStrategy,
+      delimiter,
+      categoriesText,
+      activeByCategory,
+      colorBy,
+      showBands,
+      xAxisLabel,
+      yAxisLabel,
+      lineStyleControls,
+      tickFormat,
+      axisRanges,
+      splitBy,
+      tieCategoryA,
+      tieCategoryB,
+      sortCategory,
+      sortRange,
+      selectedHorizons,
+      horizonLogic,
+      bundledFilter,
+      classificationFilter,
+    }
+  }
+
+  // Apply a parsed config (DR-08): start from DEFAULT_CONFIG, overlay parsed
+  // values so absent elements reset to the app default. Restores controls
+  // only — never re-parses data. Guards activeByCategory against categories
+  // not present in the current dataset (RISK-005).
+  function applyConfig(parsed) {
+    const cfg = { ...DEFAULT_CONFIG, ...parsed }
+
+    setLabelStrategy(cfg.labelStrategy)
+    setDelimiter(cfg.delimiter)
+    setCategoriesText(cfg.categoriesText)
+    setColorBy(cfg.colorBy)
+    setShowBands(cfg.showBands)
+    setXAxisLabel(cfg.xAxisLabel)
+    setYAxisLabel(cfg.yAxisLabel)
+    setLineStyleControls({ ...DEFAULT_CONFIG.lineStyleControls, ...cfg.lineStyleControls })
+    setTickFormat({ ...DEFAULT_CONFIG.tickFormat, ...cfg.tickFormat })
+    setAxisRanges({ ...DEFAULT_CONFIG.axisRanges, ...cfg.axisRanges })
+    setSplitBy(cfg.splitBy)
+    setTieCategoryA(cfg.tieCategoryA)
+    setTieCategoryB(cfg.tieCategoryB)
+    setSortCategory(cfg.sortCategory)
+    setSortRange(cfg.sortRange)
+    setSelectedHorizons(new Set(cfg.selectedHorizons))
+    setHorizonLogic(cfg.horizonLogic)
+    setBundledFilter(new Set(cfg.bundledFilter))
+    setClassificationFilter(new Set(cfg.classificationFilter))
+
+    // activeByCategory: the loaded config deterministically owns the full
+    // selection. Start every dataset category at its "all selected" default
+    // (matching the categoryValues seeding effect), then overlay the loaded
+    // selection where it overlaps reality — categories absent from the config
+    // reset to default rather than persisting prior session state (DR-08).
+    const guarded = {}
+    for (const [cat, vals] of Object.entries(categoryValues)) {
+      guarded[cat] = new Set(vals)
+    }
+    for (const [cat, vals] of Object.entries(cfg.activeByCategory || {})) {
+      if (!categoryValues[cat]) continue
+      const known = new Set(categoryValues[cat])
+      const next = new Set()
+      for (const v of vals) if (known.has(v)) next.add(v)
+      guarded[cat] = next
+    }
+    setActiveByCategory(guarded)
+
+    setStatus('Configuration applied')
+  }
+
   // --- Render ------------------------------------------------------------
 
   return (
@@ -403,10 +591,16 @@ export default function App() {
         <aside className="border-r border-rule p-3 overflow-y-auto flex flex-col gap-3">
           <FileDropzone
             onFile={loadFile}
+            onRdf={loadRdf}
             onSidecar={loadSidecar}
             onClassifications={loadClassifications}
             classificationSchemeCount={classificationSchemeCount}
             hasData={rows.length > 0}
+            rdfSlots={rdfSlots}
+            selectedSlot={selectedSlot}
+            onSelectSlot={selectRdfSlot}
+            canDownloadCsv={rdf !== null && rows.length > 0}
+            onDownloadCsv={downloadDatasetCsv}
           />
 
           {rows.length > 0 && (
@@ -437,10 +631,14 @@ export default function App() {
               onShowBandsChange={setShowBands}
               xAxisLabel={xAxisLabel}
               yAxisLabel={yAxisLabel}
+              defaultYAxisLabel={defaultYAxisLabel}
               onXAxisLabelChange={setXAxisLabel}
               onYAxisLabelChange={setYAxisLabel}
               lineStyleControls={lineStyleControls}
               onLineStyleControlsChange={setLineStyleControls}
+              tickFormat={tickFormat}
+              onTickFormatChange={(axis, value) => setTickFormat((prev) => ({ ...prev, [axis]: value }))}
+              bandsActive={bandsActive}
               axisRanges={axisRanges}
               onAxisRangesChange={setAxisRanges}
               indexType={indexType}
@@ -467,6 +665,14 @@ export default function App() {
               onHorizonLogicChange={setHorizonLogic}
               onBundledFilterChange={toggleBundledFilter}
               onClassificationFilterChange={toggleClassificationFilter}
+            />
+          )}
+
+          {rows.length > 0 && (
+            <ConfigControls
+              getConfig={getCurrentConfig}
+              onLoadConfig={applyConfig}
+              onError={setError}
             />
           )}
 
@@ -503,7 +709,9 @@ export default function App() {
                         indexType={indexType}
                         xAxisLabel={xAxisLabel}
                         yAxisLabel={yAxisLabel}
+                        defaultYAxisLabel={defaultYAxisLabel}
                         lineStyleControls={lineStyleControls}
+                        tickFormat={tickFormat}
                         axisRanges={axisRanges}
                       />
                     </div>

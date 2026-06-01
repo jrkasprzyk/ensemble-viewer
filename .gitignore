@@ -47,6 +47,9 @@ web_modules/
 # TypeScript cache
 *.tsbuildinfo
 
+# Obsidian directory
+plan/.obsidian/
+
 # Optional npm cache directory
 .npm
 
@@ -141,7 +144,10 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Claude files
 .claude/settings.local.json
+.claude/worktrees/
 
 # Private data
 private/

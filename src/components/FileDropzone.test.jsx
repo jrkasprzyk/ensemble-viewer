@@ -99,7 +99,7 @@ describe('FileDropzone — examples manifest loading', () => {
 
     await waitFor(() => expect(screen.getByLabelText('Examples').disabled).toBe(false))
 
-    const fileInput = container.querySelector('input[type="file"][accept=".csv,.tsv,.xlsx,.xls"]')
+    const fileInput = container.querySelector('input[type="file"][accept=".csv,.tsv,.xlsx,.xls,.rdf"]')
     expect(fileInput).toBeTruthy()
     const firstLocalFile = new File(['first'], 'local.csv', { type: 'text/csv' })
     fireEvent.change(fileInput, { target: { files: [firstLocalFile] } })

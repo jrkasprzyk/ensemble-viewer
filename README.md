@@ -14,6 +14,7 @@ A browser-based tool for visualising large ensemble timeseries datasets. Drop in
 - **Density-aware line styling** — line width and opacity scale automatically with visible trace count; manual thickness/opacity sliders in the Display panel
 - **Colourblind-safe** — Okabe-Ito palette used throughout
 - **Built-in demo** — load sample data with one click, no file needed
+- **Save / load configuration** — export the full left-panel setup to a documented XML preset and reload it later (see [`docs/config-schema.md`](docs/config-schema.md))
 
 ## Quick start
 
@@ -186,6 +187,18 @@ See [`scripts/README.md`](scripts/README.md) for the full reference.
 | Excel parsing | SheetJS (XLSX) |
 | Build tool | Vite |
 | Tests | Vitest |
+
+## Saving and loading configurations
+
+Once a dataset is loaded, the **Configuration** panel in the sidebar lets you
+**Save config** (download the current left-panel settings as
+`ensemble-viewer-config.xml`) and **Load config** (restore them from a file).
+This makes it easy to prepare presets in advance — for example, preferred
+options for plotting a particular RiverWare slot — and share them.
+
+Loading a config restores controls only; it never re-reads or re-parses your
+data file. The XML format is versioned and publicly documented in
+[`docs/config-schema.md`](docs/config-schema.md).
 
 ## Contributing
 

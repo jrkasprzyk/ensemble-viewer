@@ -6,7 +6,23 @@ import {
   fetchClassificationBundle,
 } from '../lib/sampleData.js'
 
-export default function FileDropzone({ onFile, onSidecar, onClassifications, classificationSchemeCount, hasData }) {
+function isRdf(file) {
+  return /\.rdf$/i.test(file?.name || '')
+}
+
+export default function FileDropzone({
+  onFile,
+  onRdf,
+  onSidecar,
+  onClassifications,
+  classificationSchemeCount,
+  hasData,
+  rdfSlots = [],
+  selectedSlot = '',
+  onSelectSlot,
+  canDownloadCsv = false,
+  onDownloadCsv,
+}) {
   const inputRef = useRef(null)
   const sidecarRef = useRef(null)
   const classificationsRef = useRef(null)
@@ -74,7 +90,12 @@ export default function FileDropzone({ onFile, onSidecar, onClassifications, cla
 
   function handleFiles(files) {
     if (!files || !files.length) return
-    onFile(files[0])
+    const file = files[0]
+    if (isRdf(file) && onRdf) {
+      onRdf(file)
+    } else {
+      onFile(file)
+    }
     if (inputRef.current) inputRef.current.value = ''
   }
 
@@ -124,7 +145,7 @@ export default function FileDropzone({ onFile, onSidecar, onClassifications, cla
             Data file
           </span>
           <span className="text-ink">
-            {hasData ? 'Replace CSV or XLSX…' : 'Drop CSV or XLSX, or click to browse'}
+            {hasData ? 'Replace CSV, XLSX or RDF…' : 'Drop CSV, XLSX or RDF, or click to browse'}
           </span>
         </div>
 
@@ -170,10 +191,53 @@ export default function FileDropzone({ onFile, onSidecar, onClassifications, cla
       <input
         ref={inputRef}
         type="file"
-        accept=".csv,.tsv,.xlsx,.xls"
+        accept=".csv,.tsv,.xlsx,.xls,.rdf"
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
       />
+
+      {rdfSlots.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-rule flex flex-col gap-1">
+          <span className="font-mono uppercase tracking-wider text-[10px] text-muted">
+            RDF series slot
+          </span>
+          <select
+            value={selectedSlot}
+            onChange={(e) => e.target.value && onSelectSlot?.(e.target.value)}
+            aria-label="RDF series slot"
+            className="px-2 py-1.5 text-[11px] font-mono border border-rule bg-paper text-ink"
+          >
+            <option value="">Select a slot…</option>
+            {rdfSlots.map((slot) => (
+              <option key={slot.key} value={slot.key}>
+                {slot.key}{slot.units ? ` (${slot.units})` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {canDownloadCsv && (
+        <div className="mt-2 pt-2 border-t border-rule flex items-center justify-between gap-2">
+          <span className="font-mono uppercase tracking-wider text-[10px] text-muted">
+            Download CSV
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onDownloadCsv?.('wide')}
+              className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider border border-rule hover:border-ink transition-colors"
+            >
+              Wide
+            </button>
+            <button
+              onClick={() => onDownloadCsv?.('stacked')}
+              className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider border border-rule hover:border-ink transition-colors"
+            >
+              Stacked
+            </button>
+          </div>
+        </div>
+      )}
       {loadError && (
         <p className="mt-2 text-[11px] text-red-600 font-mono">{loadError}</p>
       )}

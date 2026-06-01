@@ -60,4 +60,27 @@ describe('computeGroupStats', () => {
     const { percentiles } = computeGroupStats(rows, 'year', ['A'], [0.1, 0.5, 0.9])
     expect(Object.keys(percentiles)).toEqual(['0.1', '0.5', '0.9'])
   })
+
+  it('maintains p10 <= median <= p90 at every timestep, ignoring NaN', () => {
+    const bandRows = [
+      { year: 2020, A: 10, B: 20, C: 30, D: 40, E: 50 },
+      { year: 2021, A: 5, B: NaN, C: 15, D: NaN, E: 25 }, // mixed NaN
+      { year: 2022, A: 100, B: 90, C: 80, D: 70, E: 60 },
+    ]
+    const { median, percentiles } = computeGroupStats(
+      bandRows,
+      'year',
+      ['A', 'B', 'C', 'D', 'E'],
+      [0.1, 0.5, 0.9]
+    )
+    for (let i = 0; i < bandRows.length; i++) {
+      const p10 = percentiles['0.1'][i]
+      const p90 = percentiles['0.9'][i]
+      expect(Number.isNaN(p10)).toBe(false)
+      expect(Number.isNaN(median[i])).toBe(false)
+      expect(Number.isNaN(p90)).toBe(false)
+      expect(p10).toBeLessThanOrEqual(median[i])
+      expect(median[i]).toBeLessThanOrEqual(p90)
+    }
+  })
 })
