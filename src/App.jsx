@@ -537,11 +537,15 @@ export default function App() {
     setBundledFilter(new Set(cfg.bundledFilter))
     setClassificationFilter(new Set(cfg.classificationFilter))
 
-    // activeByCategory: keep only categories that exist in the current dataset,
-    // and intersect each value set with the dataset's known values. The
-    // categoryValues effect re-seeds "all selected" for fresh datasets; here we
-    // honor the loaded selection where it overlaps reality.
+    // activeByCategory: the loaded config deterministically owns the full
+    // selection. Start every dataset category at its "all selected" default
+    // (matching the categoryValues seeding effect), then overlay the loaded
+    // selection where it overlaps reality — categories absent from the config
+    // reset to default rather than persisting prior session state (DR-08).
     const guarded = {}
+    for (const [cat, vals] of Object.entries(categoryValues)) {
+      guarded[cat] = new Set(vals)
+    }
     for (const [cat, vals] of Object.entries(cfg.activeByCategory || {})) {
       if (!categoryValues[cat]) continue
       const known = new Set(categoryValues[cat])
@@ -549,9 +553,7 @@ export default function App() {
       for (const v of vals) if (known.has(v)) next.add(v)
       guarded[cat] = next
     }
-    if (Object.keys(guarded).length) {
-      setActiveByCategory((prev) => ({ ...prev, ...guarded }))
-    }
+    setActiveByCategory(guarded)
 
     setStatus('Configuration applied')
   }
