@@ -220,6 +220,40 @@ describe('rdfToDataset — error handling (SEC-001)', () => {
     expect(() => rdfToDataset(rdf, 'R.S')).toThrow(/timestep/i)
   })
 
+  it('throws on a malformed slot skipped during parsing (empty values)', () => {
+    // Slot with no slot_type and a value count that matches neither nts nor 1
+    // hits parseSlot's warn path: values=[] and scalar=null. It slips past the
+    // scalar guard (null is falsy) but must error on the length mismatch rather
+    // than yield a silently-empty dataset.
+    const bad = [
+      'name:x', 'number_of_runs:1', 'END_PACKAGE_PREAMBLE',
+      'trace:1', 'time_steps:3', 'END_RUN_PREAMBLE',
+      '2020-1-1 24:00', '2020-1-2 24:00', '2020-1-3 24:00',
+      'object_type: R', 'object_name: R', 'slot_name: S',
+      'END_SLOT_PREAMBLE', 'units: af', 'scale: 1', '1', '2', 'END_COLUMN', 'END_SLOT', 'END_RUN',
+      '',
+    ].join('\n')
+    const rdf = parseRdf(bad)
+    expect(() => rdfToDataset(rdf, 'R.S')).toThrow(/malformed|skipped|values but/i)
+  })
+
+  it('throws when a later run has a malformed slot (value/timestep mismatch)', () => {
+    const bad = [
+      'name:x', 'number_of_runs:2', 'END_PACKAGE_PREAMBLE',
+      'trace:1', 'time_steps:3', 'END_RUN_PREAMBLE',
+      '2020-1-1 24:00', '2020-1-2 24:00', '2020-1-3 24:00',
+      'object_type: R', 'object_name: R', 'slot_type: SeriesSlot', 'slot_name: S',
+      'END_SLOT_PREAMBLE', 'units: af', 'scale: 1', '1', '2', '3', 'END_COLUMN', 'END_SLOT', 'END_RUN',
+      'trace:2', 'time_steps:3', 'END_RUN_PREAMBLE',
+      '2020-1-1 24:00', '2020-1-2 24:00', '2020-1-3 24:00',
+      'object_type: R', 'object_name: R', 'slot_name: S',
+      'END_SLOT_PREAMBLE', 'units: af', 'scale: 1', '1', '2', 'END_COLUMN', 'END_SLOT', 'END_RUN',
+      '',
+    ].join('\n')
+    const rdf = parseRdf(bad)
+    expect(() => rdfToDataset(rdf, 'R.S')).toThrow(/run 2.*values but|malformed|skipped/i)
+  })
+
   it('throws a descriptive error on non-RDF text instead of crashing', () => {
     expect(() => parseRdf('just,a,csv\n1,2,3\n')).toThrow(/valid RDF file/)
   })

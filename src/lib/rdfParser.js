@@ -303,6 +303,17 @@ export function rdfToDataset(rdf, slotKey) {
   if (!refTimes.length) {
     throw new Error(`Slot "${slotKey}": run 1 has no timesteps.`)
   }
+  // A slot that failed parseSlot's value-count check has scalar=null and
+  // values=[] but still appears in run.slots. It slips past the scalar guard
+  // above (null is falsy), so assert its length matches the timesteps to
+  // surface a descriptive error instead of silently emitting empty rows.
+  if (chosen.values.length !== refTimes.length) {
+    throw new Error(
+      `Slot "${slotKey}": run 1 has ${chosen.values.length} values but ` +
+      `${refTimes.length} timesteps. The slot may be malformed or was skipped ` +
+      'during parsing.'
+    )
+  }
   for (let i = 1; i < runs.length; i++) {
     const t = runs[i].times
     const trace = runs[i].preamble?.trace ?? i + 1
@@ -321,6 +332,14 @@ export function rdfToDataset(rdf, slotKey) {
     }
     if (!(slotKey in runs[i].slots)) {
       throw new Error(`Slot "${slotKey}" missing from run ${i + 1} (trace=${trace}).`)
+    }
+    const vals = runs[i].slots[slotKey].values
+    if (vals.length !== refTimes.length) {
+      throw new Error(
+        `Slot "${slotKey}": run ${i + 1} (trace=${trace}) has ${vals.length} ` +
+        `values but ${refTimes.length} timesteps. The slot may be malformed or ` +
+        'was skipped during parsing.'
+      )
     }
   }
 
