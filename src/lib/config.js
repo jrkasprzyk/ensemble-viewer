@@ -22,8 +22,9 @@
  *   - No external entity resolution is enabled (DOMParser does not resolve
  *     external entities by default in target browsers — ASSUMPTION-003).
  *   - Numeric fields are validated/clamped: no NaN / Infinity reaches state,
- *     line-style overrides are clamped to their allowed ranges, and a negative
- *     width override is rejected (falls back to default null).
+ *     line-style overrides are clamped to their allowed ranges (a finite
+ *     out-of-range value, including a negative width, is clamped to the
+ *     nearest bound; only a blank/non-finite override falls back to null).
  */
 
 import {
@@ -291,7 +292,7 @@ export function parseConfig(xmlString) {
     const opacity = clampFiniteOrUndefined(sub('opacity'), MIN_STYLE_MULTIPLIER, MAX_STYLE_MULTIPLIER)
     if (thickness !== undefined) controls.thickness = thickness
     if (opacity !== undefined) controls.opacity = opacity
-    // Overrides: blank/absent → null; valid finite → clamped; invalid/negative → null.
+    // Overrides: blank/absent/non-finite → null; finite → clamped to range (negative → min).
     controls.widthOverride = parseOverride(sub('widthOverride'), MIN_LINE_WIDTH, MAX_LINE_WIDTH)
     controls.opacityOverride = parseOverride(sub('opacityOverride'), MIN_LINE_OPACITY, MAX_LINE_OPACITY)
     out.lineStyleControls = controls
