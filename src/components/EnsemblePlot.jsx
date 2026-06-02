@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useCallback, useId, useMemo, useRef, useState } from 'react'
 import createPlotlyFactory from 'react-plotly.js/factory'
 import Plotly from 'plotly.js-dist-min'
 // Support both CommonJS and ESM shapes for the factory and Plotly imports.
@@ -8,6 +8,8 @@ const Plot = createPlotlyComponent(PlotlyLib)
 import { NEUTRAL_GRAY } from '../lib/palette.js'
 import { computeGroupStats } from '../lib/stats.js'
 import { resolveLineStyling, tickFormatString } from '../lib/plotStyle.js'
+
+const DOWNLOAD_FORMATS = ['svg', 'png']
 
 /**
  * EnsemblePlot
@@ -40,6 +42,10 @@ export default function EnsemblePlot({
   tickFormat,        // { x: 'auto'|'int'|'1'|'2', y: ... } per-axis tick precision
   axisRanges,        // { xMin, xMax, yMin, yMax } strings; empty = auto
 }) {
+  const downloadFormatId = useId()
+  const plotDivRef = useRef(null)
+  const [downloadFormat, setDownloadFormat] = useState('svg')
+  const canDownloadPlot = typeof PlotlyLib?.downloadImage === 'function'
   const { traces, layout } = useMemo(() => {
     if (!rows || !rows.length) return { traces: [], layout: {} }
 
@@ -189,19 +195,62 @@ export default function EnsemblePlot({
     return { traces, layout }
   }, [rows, indexColumn, columns, labelsByColumn, colorBy, colorMap, visibleColumns, showBands, indexType, xAxisLabel, yAxisLabel, defaultYAxisLabel, lineStyleControls, tickFormat, axisRanges])
 
+  const handleDownload = useCallback(() => {
+    if (!plotDivRef.current || !canDownloadPlot) return
+    PlotlyLib.downloadImage(plotDivRef.current, {
+      format: downloadFormat,
+      filename: 'ensemble',
+    })
+  }, [canDownloadPlot, downloadFormat])
+
   return (
-    <Plot
-      data={traces}
-      layout={layout}
-      useResizeHandler
-      style={{ width: '100%', height: '100%' }}
-      config={{
-        displaylogo: false,
-        responsive: true,
-        toImageButtonOptions: { format: 'svg', filename: 'ensemble' },
-        modeBarButtonsToRemove: ['lasso2d', 'select2d'],
-      }}
-    />
+    <div className="h-full flex flex-col gap-2">
+      <div className="flex items-center justify-end gap-2">
+        <label htmlFor={downloadFormatId} className="text-[10px] font-mono uppercase tracking-wider">
+          Download format
+        </label>
+        <select
+          id={downloadFormatId}
+          value={downloadFormat}
+          onChange={(event) => setDownloadFormat(event.target.value)}
+          className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider border border-rule bg-paper text-ink"
+        >
+          {DOWNLOAD_FORMATS.map((format) => (
+            <option key={format} value={format}>
+              {format}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={handleDownload}
+          disabled={!canDownloadPlot}
+          className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider border border-rule hover:border-ink transition-colors disabled:cursor-not-allowed"
+        >
+          Download plot
+        </button>
+      </div>
+
+      <div className="min-h-0 flex-1">
+        <Plot
+          data={traces}
+          layout={layout}
+          useResizeHandler
+          style={{ width: '100%', height: '100%' }}
+          onInitialized={(_, graphDiv) => {
+            plotDivRef.current = graphDiv
+          }}
+          onUpdate={(_, graphDiv) => {
+            plotDivRef.current = graphDiv
+          }}
+          config={{
+            displaylogo: false,
+            responsive: true,
+            modeBarButtonsToRemove: ['lasso2d', 'select2d', 'toImage'],
+          }}
+        />
+      </div>
+    </div>
   )
 }
 
