@@ -113,12 +113,22 @@ export default function App() {
       setClassificationFilter(new Set(['Failure', 'Success']))
     }
 
+    // When a classification bundle is active, labelsByColumn IS the
+    // classification labels (no slot/units), owned by the classificationLabels
+    // effect. Re-deriving headers here would transiently drop the scheme
+    // categories → the colorBy-reset effect would nuke a scheme colorBy before
+    // the classification effect restores it. So skip the re-derivation on a
+    // preserved slot switch while classifications are loaded.
+    const keepClassificationLabels = preserveView && rawClassificationsByTrace !== null
+
     // Re-derive labelsByColumn even on a slot switch so the new slot's
     // slot/units values flow through; the seeding effect treats those changed
     // values as brand-new and keeps every column visible (REQ-004). On a
     // preserved view, don't force labelStrategy back to 'headers' — leave the
     // user's strategy (e.g. 'classifications', restored by its own effect).
-    if (parsed.labelRowCount > 0 && Object.keys(parsed.labelsByColumn).length) {
+    if (keepClassificationLabels) {
+      // no-op: classificationLabels effect re-applies labels for the new columns
+    } else if (parsed.labelRowCount > 0 && Object.keys(parsed.labelsByColumn).length) {
       setLabelsByColumn(parsed.labelsByColumn)
       if (!preserveView) setLabelStrategy('headers')
     } else {
