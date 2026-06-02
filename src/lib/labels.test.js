@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   parseLabelsFromNames,
+  seedActiveByCategory,
   summarizeLabels,
   tieLabelCategories,
   detectIndexType,
@@ -552,5 +553,65 @@ describe('parseSidecarLabels', () => {
     const result = await parseSidecarLabels(fakeFile(csv))
     expect(result['run1'].run_id).toBe('42')
     expect(typeof result['run1'].run_id).toBe('string')
+  })
+})
+
+// ---------------------------------------------------------------------------
+// seedActiveByCategory — preserves trace filters across RDF slot switches
+// ---------------------------------------------------------------------------
+describe('seedActiveByCategory', () => {
+  it('(a) fresh seed (empty prev) selects all values in every category', () => {
+    const categoryValues = { scenario: ['RCP45', 'RCP85'], gcm: ['CanESM5', 'MIROC6'] }
+    const next = seedActiveByCategory({}, {}, categoryValues)
+    expect(next.scenario).toEqual(new Set(['RCP45', 'RCP85']))
+    expect(next.gcm).toEqual(new Set(['CanESM5', 'MIROC6']))
+  })
+
+  it('(b) keeps a de-selected value de-selected across an identical value set', () => {
+    const prevCategoryValues = { scenario: ['RCP45', 'RCP85'] }
+    // User had de-selected RCP45.
+    const prevActive = { scenario: new Set(['RCP85']) }
+    const next = seedActiveByCategory(prevActive, prevCategoryValues, prevCategoryValues)
+    expect(next.scenario).toEqual(new Set(['RCP85']))
+  })
+
+  it('(c) a constant category gaining a new value (slot switch) keeps all columns visible', () => {
+    // slot changes value on switch: old slot "Inflow" → new slot "Outflow".
+    const prevCategoryValues = { slot: ['Inflow'], scenario: ['RCP45', 'RCP85'] }
+    const prevActive = { slot: new Set(['Inflow']), scenario: new Set(['RCP85']) }
+    const categoryValues = { slot: ['Outflow'], scenario: ['RCP45', 'RCP85'] }
+    const next = seedActiveByCategory(prevActive, prevCategoryValues, categoryValues)
+    // New slot value auto-selected → no column hidden by the slot category.
+    expect(next.slot).toEqual(new Set(['Outflow']))
+    // Trace-level de-selection preserved.
+    expect(next.scenario).toEqual(new Set(['RCP85']))
+  })
+
+  it('(d) a brand-new category selects all of its values', () => {
+    const prevCategoryValues = { scenario: ['RCP45', 'RCP85'] }
+    const prevActive = { scenario: new Set(['RCP85']) }
+    const categoryValues = {
+      scenario: ['RCP45', 'RCP85'],
+      gcm: ['CanESM5', 'MIROC6'],
+    }
+    const next = seedActiveByCategory(prevActive, prevCategoryValues, categoryValues)
+    expect(next.scenario).toEqual(new Set(['RCP85']))
+    expect(next.gcm).toEqual(new Set(['CanESM5', 'MIROC6']))
+  })
+
+  it('(e) a removed value drops out cleanly', () => {
+    const prevCategoryValues = { scenario: ['RCP45', 'RCP85', 'RCP26'] }
+    const prevActive = { scenario: new Set(['RCP45', 'RCP85', 'RCP26']) }
+    // RCP26 no longer present.
+    const categoryValues = { scenario: ['RCP45', 'RCP85'] }
+    const next = seedActiveByCategory(prevActive, prevCategoryValues, categoryValues)
+    expect(next.scenario).toEqual(new Set(['RCP45', 'RCP85']))
+    expect(next.scenario.has('RCP26')).toBe(false)
+  })
+
+  it('selects all when a category exists in prev values but has no prior selection', () => {
+    const prevCategoryValues = { scenario: ['RCP45', 'RCP85'] }
+    const next = seedActiveByCategory({}, prevCategoryValues, prevCategoryValues)
+    expect(next.scenario).toEqual(new Set(['RCP45', 'RCP85']))
   })
 })

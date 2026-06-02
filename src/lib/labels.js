@@ -122,6 +122,51 @@ export function summarizeLabels(labelsByColumn) {
 }
 
 /**
+ * Seed the `activeByCategory` filter selection when the available categories or
+ * their values change, preserving the user's prior selection where it still
+ * applies.
+ *
+ * This is what lets a trace filter persist across RDF slot switches: across
+ * slots of one RDF the columns (traces) are identical, so a selection made on
+ * one slot is still meaningful on the next. Only `slot`/`units`-style label
+ * values differ, and those values are treated as "brand-new" → auto-selected,
+ * so a switch never hides every column.
+ *
+ * Rule per current category:
+ *  - Brand-new category (absent from `prevCategoryValues`) → select all values.
+ *  - Existing category → keep each value that was previously selected, PLUS any
+ *    value that is brand-new (present now, absent from `prevCategoryValues`).
+ *    Values the user had de-selected stay de-selected; removed values drop out.
+ *
+ * @param {Record<string, Set<string>>} prevActive          Prior selection.
+ * @param {Record<string, string[]>}    prevCategoryValues   Prior category→values.
+ * @param {Record<string, string[]>}    categoryValues       Current category→values.
+ * @returns {Record<string, Set<string>>}  Next activeByCategory.
+ */
+export function seedActiveByCategory(prevActive, prevCategoryValues, categoryValues) {
+  const prev = prevActive || {}
+  const prevValues = prevCategoryValues || {}
+  const next = {}
+
+  for (const [cat, vals] of Object.entries(categoryValues || {})) {
+    const isNewCategory = !Object.prototype.hasOwnProperty.call(prevValues, cat)
+    const prevSelected = prev[cat]
+
+    if (isNewCategory || !prevSelected) {
+      // Brand-new category (or no prior selection) → select everything.
+      next[cat] = new Set(vals)
+      continue
+    }
+
+    const prevValueSet = new Set(prevValues[cat] || [])
+    // Keep previously-selected values; auto-select brand-new values.
+    next[cat] = new Set(vals.filter((v) => prevSelected.has(v) || !prevValueSet.has(v)))
+  }
+
+  return next
+}
+
+/**
  * Combine multiple categories into a single tied category.
  *
  * Example:
