@@ -560,6 +560,8 @@ export default function App() {
 
   // --- Render ------------------------------------------------------------
 
+  const loadedFileName = file?.name || ''
+
   return (
     <div className="h-full flex flex-col">
       <header className="border-b border-rule px-4 py-3 flex items-baseline justify-between">
@@ -572,6 +574,7 @@ export default function App() {
           </span>
         </div>
         <div className="font-mono text-[10px] text-muted text-right">
+          {loadedFileName && <div>file: {loadedFileName}</div>}
           <div>{status}</div>
           {resolvedLineStyle && (
             <div>
