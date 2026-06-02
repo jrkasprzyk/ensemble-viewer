@@ -56,6 +56,10 @@ export default function App() {
   // switch (preserve selection) vs. a fresh load (reset to all). See
   // seedActiveByCategory in lib/labels.js.
   const prevCategoryValuesRef = useRef({})
+  // One-shot marker for a fresh dataset load (new CSV/XLSX or RDF). The next
+  // seed must start from empty selection/category snapshots so no trace filter
+  // carries between unrelated files (REQ-002).
+  const forceFreshSeedRef = useRef(false)
   const [colorBy, setColorBy] = useState(null)
   const [showBands, setShowBands] = useState(false)
   const [xAxisLabel, setXAxisLabel] = useState('')
@@ -105,6 +109,7 @@ export default function App() {
     setLabelRowCount(parsed.labelRowCount)
 
     if (!preserveView) {
+      forceFreshSeedRef.current = true
       setColorBy(null)
       setRawClassificationsByTrace(null)
       setSelectedHorizons(new Set())
@@ -158,6 +163,7 @@ export default function App() {
       // unrelated files (REQ-002); the seeding effect then selects all.
       setActiveByCategory({})
       prevCategoryValuesRef.current = {}
+      forceFreshSeedRef.current = true
       applyDataset(parsed)
     } catch (e) {
       console.error(e)
@@ -186,6 +192,7 @@ export default function App() {
       // pick is treated as a fresh load (REQ-003); later switches preserve.
       setActiveByCategory({})
       prevCategoryValuesRef.current = {}
+      forceFreshSeedRef.current = true
       // Clear any previously loaded dataset until a slot is chosen.
       setRows([])
       setColumns([])
@@ -404,11 +411,13 @@ export default function App() {
   // reset prevCategoryValuesRef to {} (in loadFile/loadRdf) so everything seeds
   // anew. See seedActiveByCategory in lib/labels.js.
   useEffect(() => {
-    const prevCategoryValues = prevCategoryValuesRef.current
+    const forceFreshSeed = forceFreshSeedRef.current
+    const prevCategoryValues = forceFreshSeed ? {} : prevCategoryValuesRef.current
     setActiveByCategory((prevActive) =>
-      seedActiveByCategory(prevActive, prevCategoryValues, categoryValues)
+      seedActiveByCategory(forceFreshSeed ? {} : prevActive, prevCategoryValues, categoryValues)
     )
     prevCategoryValuesRef.current = categoryValues
+    forceFreshSeedRef.current = false
   }, [categoryValues])
 
   useEffect(() => {
