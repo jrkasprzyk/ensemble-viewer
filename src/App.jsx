@@ -413,8 +413,9 @@ export default function App() {
   useEffect(() => {
     const forceFreshSeed = forceFreshSeedRef.current
     const prevCategoryValues = forceFreshSeed ? {} : prevCategoryValuesRef.current
+    const forcedPrevActive = forceFreshSeed ? {} : null
     setActiveByCategory((prevActive) =>
-      seedActiveByCategory(forceFreshSeed ? {} : prevActive, prevCategoryValues, categoryValues)
+      seedActiveByCategory(forcedPrevActive ?? prevActive, prevCategoryValues, categoryValues)
     )
     prevCategoryValuesRef.current = categoryValues
     forceFreshSeedRef.current = false
