@@ -45,6 +45,7 @@ export default function EnsemblePlot({
   const downloadFormatId = useId()
   const plotDivRef = useRef(null)
   const [downloadFormat, setDownloadFormat] = useState('svg')
+  const canDownloadPlot = typeof PlotlyLib?.downloadImage === 'function'
   const { traces, layout } = useMemo(() => {
     if (!rows || !rows.length) return { traces: [], layout: {} }
 
@@ -195,18 +196,18 @@ export default function EnsemblePlot({
   }, [rows, indexColumn, columns, labelsByColumn, colorBy, colorMap, visibleColumns, showBands, indexType, xAxisLabel, yAxisLabel, defaultYAxisLabel, lineStyleControls, tickFormat, axisRanges])
 
   const handleDownload = useCallback(() => {
-    if (!plotDivRef.current || typeof PlotlyLib?.downloadImage !== 'function') return
+    if (!plotDivRef.current || !canDownloadPlot) return
     PlotlyLib.downloadImage(plotDivRef.current, {
       format: downloadFormat,
       filename: 'ensemble',
     })
-  }, [downloadFormat])
+  }, [canDownloadPlot, downloadFormat])
 
   return (
     <div className="h-full flex flex-col gap-2">
       <div className="flex items-center justify-end gap-2">
-        <label htmlFor={downloadFormatId} className="text-[10px] font-mono uppercase tracking-wider text-muted">
-          Download as
+        <label htmlFor={downloadFormatId} className="text-[10px] font-mono uppercase tracking-wider">
+          Download format
         </label>
         <select
           id={downloadFormatId}
@@ -223,7 +224,8 @@ export default function EnsemblePlot({
         <button
           type="button"
           onClick={handleDownload}
-          className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider border border-rule hover:border-ink transition-colors"
+          disabled={!canDownloadPlot}
+          className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider border border-rule hover:border-ink transition-colors disabled:cursor-not-allowed"
         >
           Download plot
         </button>

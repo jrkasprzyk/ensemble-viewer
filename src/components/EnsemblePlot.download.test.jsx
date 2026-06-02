@@ -52,7 +52,7 @@ describe('EnsemblePlot downloads', () => {
       />
     )
 
-    const formatSelect = screen.getByLabelText(/download as/i)
+    const formatSelect = screen.getByLabelText(/download format/i)
     expect(formatSelect.value).toBe('svg')
 
     fireEvent.change(formatSelect, { target: { value: 'png' } })
