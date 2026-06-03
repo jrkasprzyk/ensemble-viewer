@@ -116,6 +116,14 @@ export default function App() {
       setHorizonLogic('OR')
       setBundledFilter(new Set(['Failure', 'Success']))
       setClassificationFilter(new Set(['Failure', 'Success']))
+      // Split/sort/tie are view state too; clear them so nothing carries
+      // between unrelated files even when a category name coincides (REQ-002).
+      // The reactive effect below only clears these when a category vanishes.
+      setSplitBy('')
+      setSortCategory('')
+      setSortRange(null)
+      setTieCategoryA('')
+      setTieCategoryB('')
     }
 
     // When a classification bundle is active, labelsByColumn IS the
@@ -411,11 +419,13 @@ export default function App() {
   // reset prevCategoryValuesRef to {} (in loadFile/loadRdf) so everything seeds
   // anew. See seedActiveByCategory in lib/labels.js.
   useEffect(() => {
+    // On a fresh load, prevCategoryValues={} makes every category read as new,
+    // so seedActiveByCategory selects all regardless of prevActive — no need to
+    // also blank prevActive.
     const forceFreshSeed = forceFreshSeedRef.current
     const prevCategoryValues = forceFreshSeed ? {} : prevCategoryValuesRef.current
-    const forcedPrevActive = forceFreshSeed ? {} : null
     setActiveByCategory((prevActive) =>
-      seedActiveByCategory(forcedPrevActive ?? prevActive, prevCategoryValues, categoryValues)
+      seedActiveByCategory(prevActive, prevCategoryValues, categoryValues)
     )
     prevCategoryValuesRef.current = categoryValues
     forceFreshSeedRef.current = false
