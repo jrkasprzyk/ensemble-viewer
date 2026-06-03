@@ -4,13 +4,11 @@ version: 1.0
 date_created: 2026-06-01
 last_updated: 2026-06-01
 owner: Joseph Kasprzyk
-status: 'Planned'
+status: 'Completed'
 tags: [feature, rdf, filtering, ux]
 ---
 
 # Introduction
-
-![Status: Planned](https://img.shields.io/badge/status-Planned-blue)
 
 When viewing a RiverWare RDF, the user picks one *series slot* at a time. Today, if
 they filter or color a subset of traces on one slot and then switch to a different
@@ -98,7 +96,7 @@ and tick format **already** persist across slot switches (they are not touched b
 | TASK-004 | In `selectRdfSlot` (`src/App.jsx:163-174`), pass `preserveView: Boolean(selectedSlot)` — `false` on the first pick (REQ-003), `true` on subsequent switches. | ✅ | 2026-06-02 |
 | TASK-005 | On fresh-load paths only — `loadFile` and `loadRdf` — reset `setActiveByCategory({})` and `prevCategoryValuesRef.current = {}` so the merge seeds everything fresh and nothing carries between files (REQ-002). `applyDataset`'s `preserveView=false` branch keeps the existing colorBy/classification resets for `loadFile`. | ✅ | 2026-06-02 |
 | TASK-006 | Add `seedActiveByCategory` tests to `src/lib/labels.test.js`: (a) fresh seed (empty prev) selects all; (b) a de-selected value stays de-selected across an identical value set; (c) a constant category gaining a new value (slot switch) keeps every column visible; (d) a brand-new category selects all; (e) a removed value drops out cleanly. | ✅ | 2026-06-02 |
-| TASK-007 | Manual verification: load a multi-slot RDF, de-select a subset of traces (and/or set `colorBy`) on slot A, switch to slot B → same subset/coloring applied; switch back → still applied; then load a different file → resets to all. | ⬜ manual | |
+| TASK-007 | Manual verification: load a multi-slot RDF, de-select a subset of traces (and/or set `colorBy`) on slot A, switch to slot B → same subset/coloring applied; switch back → still applied; then load a different file → resets to all. | ✅ | 2026-06-03 |
 
 # 3. Alternatives
 
