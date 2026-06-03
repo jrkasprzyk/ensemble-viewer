@@ -31,8 +31,8 @@ import { DEFAULT_CONFIG } from './lib/config.js'
 
 const EMPTY_LABEL = '⟨empty⟩'
 
-function resolveSourcePath(file, sourcePath = '') {
-  return sourcePath || file?.webkitRelativePath || file?.name || ''
+function resolveSourcePath(file, explicitSourcePath = '') {
+  return explicitSourcePath || file?.webkitRelativePath || file?.name || ''
 }
 
 export default function App() {
