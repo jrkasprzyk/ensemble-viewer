@@ -108,7 +108,7 @@ describe('FileDropzone — examples manifest loading', () => {
 
     fireEvent.change(screen.getByLabelText('Examples'), { target: { value: 'demo-a' } })
     await waitFor(() => expect(fetchExampleFile).toHaveBeenCalledWith('/a.csv'))
-    expect(onFile).toHaveBeenCalledWith(exampleFile)
+    expect(onFile).toHaveBeenCalledWith(exampleFile, { sourcePath: '/a.csv' })
 
     const secondLocalFile = new File(['second'], 'local.csv', { type: 'text/csv' })
     fireEvent.change(fileInput, { target: { files: [secondLocalFile] } })

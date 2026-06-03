@@ -110,7 +110,7 @@ export default function FileDropzone({
     try {
       const file = await fetchExampleFile(example.entry)
       if (!mountedRef.current) return
-      await onFile(file)
+      await onFile(file, { sourcePath: example.entry })
       if (!mountedRef.current) return
       if (example.sidecar && onSidecar) {
         const sidecarFile = await fetchExampleSidecar(example.sidecar)

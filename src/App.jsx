@@ -31,6 +31,10 @@ import { DEFAULT_CONFIG } from './lib/config.js'
 
 const EMPTY_LABEL = '⟨empty⟩'
 
+function resolveSourcePath(file, sourcePath = '') {
+  return sourcePath || file?.webkitRelativePath || file?.name || ''
+}
+
 export default function App() {
   // Raw dataset
   const [file, setFile] = useState(null)           // the File object, kept so we can re-parse
@@ -89,6 +93,7 @@ export default function App() {
   // UI
   const [error, setError] = useState(null)
   const [status, setStatus] = useState('')
+  const [sourcePath, setSourcePath] = useState('')
 
   // --- File loading ------------------------------------------------------
 
@@ -155,7 +160,7 @@ export default function App() {
     setStatus(`Loaded ${parsed.columns.length} columns × ${parsed.rows.length} rows`)
   }
 
-  async function loadFile(f, { labelRowCount: lrc = null } = {}) {
+  async function loadFile(f, { labelRowCount: lrc = null, sourcePath: nextSourcePath = '' } = {}) {
     setError(null)
     setStatus(`Parsing ${f.name}…`)
     try {
@@ -164,6 +169,7 @@ export default function App() {
         ? await parseXlsxFile(f, { labelRowCount: lrc })
         : await parseCsvFile(f, { labelRowCount: lrc })
       setFile(f)
+      setSourcePath(resolveSourcePath(f, nextSourcePath))
       setRdf(null)
       setRdfSlots([])
       setSelectedSlot('')
@@ -193,6 +199,7 @@ export default function App() {
         throw new Error('No series slots found in this RDF file.')
       }
       setFile(f)
+      setSourcePath(resolveSourcePath(f))
       setRdf(parsedRdf)
       setRdfSlots(seriesSlots)
       setSelectedSlot('')
@@ -296,7 +303,7 @@ export default function App() {
 
   async function reparseWithHeaders() {
     if (!file) return
-    await loadFile(file, { labelRowCount })
+    await loadFile(file, { labelRowCount, sourcePath })
   }
 
   // --- Derived state -----------------------------------------------------
@@ -624,7 +631,7 @@ export default function App() {
 
   // --- Render ------------------------------------------------------------
 
-  const loadedFileName = file?.name || ''
+  const loadedFileName = sourcePath || file?.name || ''
 
   return (
     <div className="h-full flex flex-col">
