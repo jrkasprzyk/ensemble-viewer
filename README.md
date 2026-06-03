@@ -18,7 +18,13 @@ A browser-based tool for visualising large ensemble timeseries datasets. Drop in
 
 ## Quick start
 
-You need [Node.js](https://nodejs.org/) v18 or later.
+### Use the version deployed on the web
+
+Visit [Ensemble Viewer, hosted on Vercel](https://ensemble-viewer.vercel.app/). To try it without your own data, pick an item from the **Examples** dropdown in the drop zone.
+
+### Run locally
+
+You need [Node.js](https://nodejs.org/) v18 or later. Then, run the following commands to clone the repo, install the dependencies, and run the dev server:
 
 ```bash
 git clone https://github.com/jrkasprzyk/ensemble-viewer.git
@@ -27,13 +33,11 @@ npm install
 npm run dev
 ```
 
-`npm run dev` starts the Vite development server and opens <http://localhost:5173>. The page hot-reloads on every file save.
-
-To try it without your own data, pick an item from the **Examples** dropdown in the drop zone.
+`npm run dev` starts the Vite development server and opens <http://localhost:5173>. The page hot-reloads on every edit to the code within the repo. To try it without your own data, pick an item from the **Examples** dropdown in the drop zone.
 
 ## Documentation
 
-Documentation follows the [Diátaxis](https://diataxis.fr/) framework — four kinds of document, each with a distinct job.
+Documentation follows the [Diátaxis](https://diataxis.fr/) framework.
 
 | Document | Read it when you want to… |
 |---|---|
