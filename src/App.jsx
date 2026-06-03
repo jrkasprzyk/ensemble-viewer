@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, lazy, Suspense } from 'react'
+import { useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
 import FileDropzone from './components/FileDropzone.jsx'
 import LabelStrategyPicker from './components/LabelStrategyPicker.jsx'
 import LabelControls from './components/LabelControls.jsx'
@@ -9,6 +9,7 @@ import { parseRdf, listSlots, rdfToDataset } from './lib/rdfParser.js'
 import { datasetToWideCsv, datasetToStackedCsv } from './lib/csvExport.js'
 import {
   parseLabelsFromNames,
+  seedActiveByCategory,
   parseSidecarLabels,
   parseClassificationBundle,
   applyClassificationMapping,
@@ -51,6 +52,14 @@ export default function App() {
 
   // Filtering & coloring
   const [activeByCategory, setActiveByCategory] = useState({})
+  // Previous categoryValues snapshot, so the seeding effect can merge a slot
+  // switch (preserve selection) vs. a fresh load (reset to all). See
+  // seedActiveByCategory in lib/labels.js.
+  const prevCategoryValuesRef = useRef({})
+  // One-shot marker for a fresh dataset load (new CSV/XLSX or RDF). The next
+  // seed must start from empty selection/category snapshots so no trace filter
+  // carries between unrelated files (REQ-002).
+  const forceFreshSeedRef = useRef(false)
   const [colorBy, setColorBy] = useState(null)
   const [showBands, setShowBands] = useState(false)
   const [xAxisLabel, setXAxisLabel] = useState('')
@@ -86,22 +95,55 @@ export default function App() {
   // Single source-agnostic setter path for CSV / XLSX / RDF datasets (PAT-003).
   // `parsed` must match the parseCsvFile shape:
   // { columns, indexColumn, rows, labelsByColumn, labelRowCount }.
-  function applyDataset(parsed) {
+  // `preserveView` (true on a slot-to-slot switch within one RDF) keeps the
+  // user's coloring + classification/horizon view state. Across slots of one
+  // RDF the columns (traces) are identical, so this state stays valid. On a
+  // fresh load (preserveView=false) everything resets to clean defaults.
+  // The trace filter (activeByCategory) persists separately via the seeding
+  // effect + seedActiveByCategory; see prevCategoryValuesRef.
+  function applyDataset(parsed, { preserveView = false } = {}) {
     setColumns(parsed.columns)
     setRows(parsed.rows)
     setIndexColumn(parsed.indexColumn)
     setIndexType(detectIndexType(parsed.rows, parsed.indexColumn))
-    setColorBy(null)
     setLabelRowCount(parsed.labelRowCount)
-    setRawClassificationsByTrace(null)
-    setSelectedHorizons(new Set())
-    setHorizonLogic('OR')
-    setBundledFilter(new Set(['Failure', 'Success']))
-    setClassificationFilter(new Set(['Failure', 'Success']))
 
-    if (parsed.labelRowCount > 0 && Object.keys(parsed.labelsByColumn).length) {
+    if (!preserveView) {
+      forceFreshSeedRef.current = true
+      setColorBy(null)
+      setRawClassificationsByTrace(null)
+      setSelectedHorizons(new Set())
+      setHorizonLogic('OR')
+      setBundledFilter(new Set(['Failure', 'Success']))
+      setClassificationFilter(new Set(['Failure', 'Success']))
+      // Split/sort/tie are view state too; clear them so nothing carries
+      // between unrelated files even when a category name coincides (REQ-002).
+      // The reactive effect below only clears these when a category vanishes.
+      setSplitBy('')
+      setSortCategory('')
+      setSortRange(null)
+      setTieCategoryA('')
+      setTieCategoryB('')
+    }
+
+    // When a classification bundle is active, labelsByColumn IS the
+    // classification labels (no slot/units), owned by the classificationLabels
+    // effect. Re-deriving headers here would transiently drop the scheme
+    // categories → the colorBy-reset effect would nuke a scheme colorBy before
+    // the classification effect restores it. So skip the re-derivation on a
+    // preserved slot switch while classifications are loaded.
+    const keepClassificationLabels = preserveView && rawClassificationsByTrace !== null
+
+    // Re-derive labelsByColumn even on a slot switch so the new slot's
+    // slot/units values flow through; the seeding effect treats those changed
+    // values as brand-new and keeps every column visible (REQ-004). On a
+    // preserved view, don't force labelStrategy back to 'headers' — leave the
+    // user's strategy (e.g. 'classifications', restored by its own effect).
+    if (keepClassificationLabels) {
+      // no-op: classificationLabels effect re-applies labels for the new columns
+    } else if (parsed.labelRowCount > 0 && Object.keys(parsed.labelsByColumn).length) {
       setLabelsByColumn(parsed.labelsByColumn)
-      setLabelStrategy('headers')
+      if (!preserveView) setLabelStrategy('headers')
     } else {
       setLabelsByColumn(
         parseLabelsFromNames(parsed.columns, {
@@ -125,6 +167,11 @@ export default function App() {
       setRdf(null)
       setRdfSlots([])
       setSelectedSlot('')
+      // Fresh load: drop any prior filter selection so nothing carries between
+      // unrelated files (REQ-002); the seeding effect then selects all.
+      setActiveByCategory({})
+      prevCategoryValuesRef.current = {}
+      forceFreshSeedRef.current = true
       applyDataset(parsed)
     } catch (e) {
       console.error(e)
@@ -149,6 +196,11 @@ export default function App() {
       setRdf(parsedRdf)
       setRdfSlots(seriesSlots)
       setSelectedSlot('')
+      // Fresh load: drop any prior filter selection (REQ-002). The first slot
+      // pick is treated as a fresh load (REQ-003); later switches preserve.
+      setActiveByCategory({})
+      prevCategoryValuesRef.current = {}
+      forceFreshSeedRef.current = true
       // Clear any previously loaded dataset until a slot is chosen.
       setRows([])
       setColumns([])
@@ -165,8 +217,11 @@ export default function App() {
     setError(null)
     try {
       const parsed = rdfToDataset(rdf, slotKey)
+      // First slot pick after loading the RDF = fresh load (REQ-003); every
+      // later slot-to-slot switch preserves the user's filters/coloring.
+      const preserveView = Boolean(selectedSlot)
       setSelectedSlot(slotKey)
-      applyDataset(parsed)
+      applyDataset(parsed, { preserveView })
     } catch (e) {
       console.error(e)
       setError(e.message || String(e))
@@ -358,13 +413,22 @@ export default function App() {
     })
   }, [columns, sortCategory, numericDomain, sortableNumberByColumn])
 
-  // When categories change, initialize activeByCategory with "all selected"
+  // When categories change, (re)seed activeByCategory. Brand-new categories and
+  // brand-new values are auto-selected; the user's prior selection is preserved
+  // otherwise, so trace filters persist across RDF slot switches. Fresh loads
+  // reset prevCategoryValuesRef to {} (in loadFile/loadRdf) so everything seeds
+  // anew. See seedActiveByCategory in lib/labels.js.
   useEffect(() => {
-    const next = {}
-    for (const [cat, vals] of Object.entries(categoryValues)) {
-      next[cat] = new Set(vals)
-    }
-    setActiveByCategory(next)
+    // On a fresh load, prevCategoryValues={} makes every category read as new,
+    // so seedActiveByCategory selects all regardless of prevActive — no need to
+    // also blank prevActive.
+    const forceFreshSeed = forceFreshSeedRef.current
+    const prevCategoryValues = forceFreshSeed ? {} : prevCategoryValuesRef.current
+    setActiveByCategory((prevActive) =>
+      seedActiveByCategory(prevActive, prevCategoryValues, categoryValues)
+    )
+    prevCategoryValuesRef.current = categoryValues
+    forceFreshSeedRef.current = false
   }, [categoryValues])
 
   useEffect(() => {
