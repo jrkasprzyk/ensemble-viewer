@@ -11,7 +11,7 @@ Stacked label rows above the data are detected automatically. If the detection i
 
 ## Load a RiverWare RDF file in the browser
 
-You do not need the Python scripts for this — the viewer reads `.rdf` files directly.
+The viewer reads [RiverWare `.rdf` files](https://riverware.org/HelpSystem/CurrentVersion/index.html#page/OutputVisual/Output_RDF.11.1.html) directly.
 
 1. Drag an `.rdf` file onto the page (or **Browse** to it). The viewer parses it and reports how many **series slots** it found.
 2. A **RDF series slot** dropdown appears. Pick the slot you want to view. The viewer converts that slot to a dataset and plots it.
@@ -20,7 +20,9 @@ You do not need the Python scripts for this — the viewer reads `.rdf` files di
    - **Wide** — rows are timesteps, columns are traces.
    - **Stacked** — the same data with any scalar slot values written as label header rows on top, which the viewer auto-detects on re-load.
 
-The downloaded CSV is named after the slot. For batch or scripted conversion outside the browser, use the [Python scripts](../scripts/README.md) instead.
+The downloaded CSV is named after the slot. 
+
+For batch or scripted conversion outside the browser, use the [Python scripts](../scripts/README.md) instead.
 
 ## Attach a sidecar label file
 
@@ -61,7 +63,7 @@ npm run build      # writes dist/
 npm run preview    # serves the production build locally to check it
 ```
 
-The output in `dist/` is a static site — host it on any static file server.
+The output in `dist/` is a static site — host it on any [static file server](https://medium.com/swlh/need-a-local-static-server-here-are-several-options-bbbe77e59a11).
 
 ## Run the tests
 
