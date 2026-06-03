@@ -52,9 +52,25 @@ src/lib/
   stats.test.js
   palette.js
   palette.test.js
+  config.js
+  config.test.js
+  csvExport.js
+  csvExport.test.js
+  plotStyle.js
+  plotStyle.test.js
+  rdfParser.js
+  rdfParser.test.js
+  slotLabels.js
+  slotLabels.test.js
+src/components/
+  EnsemblePlot.jsx
+  EnsemblePlot.test.js
+  EnsemblePlot.download.test.jsx
+  FileDropzone.jsx
+  FileDropzone.test.jsx
 ```
 
-The test runner is [Vitest](https://vitest.dev/), which uses the same syntax as Jest. Tests are plain functions — no DOM required — so they run in a Node environment and are fast.
+The test runner is [Vitest](https://vitest.dev/), which uses the same syntax as Jest. The default environment is Node — the `src/lib/` tests are pure functions with no DOM, so they run fast. Component tests under `src/components/` opt into a browser-like DOM (jsdom) per file with a `// @vitest-environment jsdom` pragma on the first line, and use [@testing-library/react](https://testing-library.com/docs/react-testing-library/intro/).
 
 **Python analogy:** Vitest is roughly equivalent to `pytest`. Each `test('description', () => { ... })` block is like a `def test_...` function.
 
@@ -74,15 +90,28 @@ ensemble-viewer/
 │   │   ├── EnsemblePlot.jsx        Plotly chart component
 │   │   ├── FileDropzone.jsx        file upload and sample loader
 │   │   ├── LabelControls.jsx       filter/colour/band UI
-│   │   └── LabelStrategyPicker.jsx label strategy selector
+│   │   ├── LabelStrategyPicker.jsx label strategy selector
+│   │   └── ConfigControls.jsx      save/load XML config UI
 │   └── lib/                        pure functions — no React, easy to test
 │       ├── parseCsv.js             CSV parsing (PapaParse wrapper)
 │       ├── parseXlsx.js            Excel parsing (SheetJS wrapper)
+│       ├── rdfParser.js            RiverWare RDF parsing (in-browser)
 │       ├── labels.js               label parsing (three strategies)
+│       ├── slotLabels.js           RDF scalar-slot → label derivation
 │       ├── stats.js                percentile/mean/median computation
+│       ├── plotStyle.js            density-aware line width/opacity
 │       ├── palette.js              Okabe-Ito colour mapping
-│       └── sampleData.js          demo dataset loader
-├── public/                         static assets (copied as-is to dist/)
+│       ├── csvExport.js            export current data back to CSV
+│       ├── config.js               XML config save/load (versioned)
+│       └── sampleData.js           demo dataset loader
+├── scripts/                        Python 3.12+ CLI for RiverWare RDF → CSV
+│   ├── rdf.py                      CLI entry point (info/slots/convert)
+│   ├── rdf_parser.py               RDF parser (no third-party deps)
+│   ├── test_rdf_parser.py          parser tests
+│   └── README.md                   full CLI reference
+├── docs/
+│   └── config-schema.md            XML config format reference
+├── public/                         static assets and sample datasets
 ├── index.html                      HTML entry point
 ├── package.json                    dependencies and scripts
 ├── vite.config.js                  build and test configuration
@@ -105,7 +134,7 @@ ensemble-viewer/
 
 1. Edit the file in `src/components/` or `src/App.jsx`.
 2. The dev server (`npm run dev`) hot-reloads on save — check the browser.
-3. There are no component-level tests yet; manual verification in the browser is the current approach.
+3. Some components have tests (e.g. `FileDropzone.test.jsx`, `EnsemblePlot.test.js`) using @testing-library/react under jsdom. Add or update them where practical; the browser is still the primary check for visual/interaction changes.
 
 ### Styling
 
