@@ -7,7 +7,7 @@ const PlotlyLib = Plotly?.default ?? Plotly
 const Plot = createPlotlyComponent(PlotlyLib)
 import { NEUTRAL_GRAY } from '../lib/palette.js'
 import { computeGroupStats } from '../lib/stats.js'
-import { resolveLineStyling, tickFormatString } from '../lib/plotStyle.js'
+import { resolveLineStyling, tickFormatString, buildLegendTraces } from '../lib/plotStyle.js'
 
 const DOWNLOAD_FORMATS = ['svg', 'png']
 
@@ -34,6 +34,7 @@ export default function EnsemblePlot({
   colorMap,         // pre-built { value → hex } map from App
   visibleColumns,   // Set<string> of columns currently shown
   showBands,        // boolean — draw percentile bands per group
+  showPlotLegend = true, // boolean — show the on-figure colorBy legend
   indexType,        // 'datetime' | 'numeric'
   xAxisLabel,       // optional x-axis label override
   yAxisLabel,       // optional y-axis label (manual override)
@@ -153,6 +154,12 @@ export default function EnsemblePlot({
       }
     }
 
+    // Synthetic legend-only traces: give the figure a colorBy key that exports
+    // with SVG/PNG without enabling the unusable per-column legend. Skipped when
+    // bands are active (they already legend per group) — see buildLegendTraces.
+    const legendTraces = buildLegendTraces({ colorBy, resolvedColorMap, bandsActive, showPlotLegend })
+    traces.push(...legendTraces)
+
     const layout = {
       autosize: true,
       margin: { l: 56, r: 16, t: 16, b: 44 },
@@ -182,7 +189,7 @@ export default function EnsemblePlot({
         ...tickFormatLayout(tickFormat?.y, 'numeric'),
         ...rangeForAxis(axisRanges?.yMin, axisRanges?.yMax),
       },
-      showlegend: bandsActive,
+      showlegend: bandsActive || legendTraces.length > 0,
       legend: {
         bgcolor: 'rgba(250,250,247,0.9)',
         bordercolor: '#d9d7d0',
@@ -193,7 +200,7 @@ export default function EnsemblePlot({
     }
 
     return { traces, layout }
-  }, [rows, indexColumn, columns, labelsByColumn, colorBy, colorMap, visibleColumns, showBands, indexType, xAxisLabel, yAxisLabel, defaultYAxisLabel, lineStyleControls, tickFormat, axisRanges])
+  }, [rows, indexColumn, columns, labelsByColumn, colorBy, colorMap, visibleColumns, showBands, showPlotLegend, indexType, xAxisLabel, yAxisLabel, defaultYAxisLabel, lineStyleControls, tickFormat, axisRanges])
 
   const handleDownload = useCallback(() => {
     if (!plotDivRef.current || !canDownloadPlot) return

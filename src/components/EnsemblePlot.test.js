@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { MIN_BAND_LINE_OPACITY, resolveLineStyling } from '../lib/plotStyle.js'
+import { MIN_BAND_LINE_OPACITY, resolveLineStyling, buildLegendTraces } from '../lib/plotStyle.js'
 import { computeGroupStats } from '../lib/stats.js'
 
 // Mirror of the band-eligibility logic inside EnsemblePlot's useMemo (DR-06):
@@ -90,5 +90,52 @@ describe('band trace eligibility (DR-06)', () => {
     })
     const bandsActive = Object.values(groups).some((g) => g.length >= 2)
     expect(bandsActive).toBe(false)
+  })
+})
+
+describe('buildLegendTraces (on-figure colorBy legend)', () => {
+  const resolvedColorMap = { Success: '#009E73', Failure: '#D55E00' }
+
+  it('emits exactly one synthetic legend trace per colorMap value when colorBy is set and bands are off', () => {
+    const traces = buildLegendTraces({
+      colorBy: 'horizon-5yr',
+      resolvedColorMap,
+      bandsActive: false,
+      showPlotLegend: true,
+    })
+    expect(traces).toHaveLength(2)
+    expect(traces.map((t) => t.name)).toEqual(['Success', 'Failure'])
+    expect(traces.map((t) => t.line.color)).toEqual(['#009E73', '#D55E00'])
+    // Count tracks category cardinality (2), not the number of lines on the plot.
+    expect(traces.every((t) => t.showlegend === true)).toBe(true)
+  })
+
+  it('plots no data point — x/y are [null] so autorange is unaffected (RISK-001)', () => {
+    const [trace] = buildLegendTraces({
+      colorBy: 'horizon-5yr',
+      resolvedColorMap,
+      bandsActive: false,
+      showPlotLegend: true,
+    })
+    expect(trace.x).toEqual([null])
+    expect(trace.y).toEqual([null])
+  })
+
+  it('emits no traces when colorBy is null', () => {
+    expect(
+      buildLegendTraces({ colorBy: null, resolvedColorMap, bandsActive: false, showPlotLegend: true })
+    ).toEqual([])
+  })
+
+  it('emits no traces when bandsActive — band traces already legend per group (avoids double entries)', () => {
+    expect(
+      buildLegendTraces({ colorBy: 'horizon-5yr', resolvedColorMap, bandsActive: true, showPlotLegend: true })
+    ).toEqual([])
+  })
+
+  it('emits no traces when the legend is toggled off', () => {
+    expect(
+      buildLegendTraces({ colorBy: 'horizon-5yr', resolvedColorMap, bandsActive: false, showPlotLegend: false })
+    ).toEqual([])
   })
 })

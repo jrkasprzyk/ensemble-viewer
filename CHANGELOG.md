@@ -10,6 +10,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Added
 - Classification coloring now shows Success/Failure color swatches in the control panel (#24)
+- On-figure color legend for any `colorBy` mode — exports with SVG/PNG; toggle via Display → "Show color legend on the figure" (#24)
 
 ### Fixed
 

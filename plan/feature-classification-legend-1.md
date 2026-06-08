@@ -4,7 +4,7 @@ version: 1.0
 date_created: 2026-06-08
 last_updated: 2026-06-08
 owner: jrkasprzyk
-status: 'Phase 1 Complete'
+status: 'Complete'
 tags: [feature, ui, plot, classification]
 ---
 
@@ -48,11 +48,11 @@ The recommended approach (Phase 1) makes the existing control-panel swatch conve
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
-| TASK-007 | In `src/components/EnsemblePlot.jsx`, after building individual traces, when `colorBy` is set and `!bandsActive`, append one synthetic legend-only trace per category value present in `resolvedColorMap`: `{ type:'scatter', mode:'lines', x:[null], y:[null], name: value, line:{ color }, showlegend:true, legendgroup:'g-'+value, hoverinfo:'skip' }`. These draw nothing but populate the legend. | | |
-| TASK-008 | Set `layout.showlegend = bandsActive || (!!colorBy)` so the legend container appears when either bands or synthetic category entries exist. Keep the existing legend styling block (`EnsemblePlot.jsx:186-191`). | | |
-| TASK-009 | Guard against duplicate entries: when `bandsActive`, the band/mean traces already legend per group — in that case SKIP the synthetic per-category traces to avoid two legend entries per value. | | |
-| TASK-010 | Add a `showPlotLegend` boolean control (default on) to `LabelControls.jsx` Display section + `App.jsx` state + pass-through prop, so users can hide the on-plot legend for dense figures. | | |
-| TASK-011 | Update `src/components/EnsemblePlot.test.js` to assert: (a) synthetic legend traces produced for a `colorBy` with no bands; (b) no synthetic traces when `colorBy` is null; (c) no double entries when `bandsActive`. | | |
+| TASK-007 | In `src/components/EnsemblePlot.jsx`, after building individual traces, when `colorBy` is set and `!bandsActive`, append one synthetic legend-only trace per category value present in `resolvedColorMap`: `{ type:'scatter', mode:'lines', x:[null], y:[null], name: value, line:{ color }, showlegend:true, legendgroup:'g-'+value, hoverinfo:'skip' }`. These draw nothing but populate the legend. Extracted to a pure `buildLegendTraces()` in `src/lib/plotStyle.js` (testable, no DOM). | ✅ | 2026-06-08 |
+| TASK-008 | Set `layout.showlegend = bandsActive \|\| legendTraces.length > 0` so the legend container appears when either bands or synthetic category entries exist (keyed off actual trace presence, robust to an empty colorMap). Keep the existing legend styling block (`EnsemblePlot.jsx:186-191`). | ✅ | 2026-06-08 |
+| TASK-009 | Guard against duplicate entries: when `bandsActive`, the band/mean traces already legend per group — in that case SKIP the synthetic per-category traces to avoid two legend entries per value. Enforced inside `buildLegendTraces()`. | ✅ | 2026-06-08 |
+| TASK-010 | Add a `showPlotLegend` boolean control (default on) to `LabelControls.jsx` Display section + `App.jsx` state + pass-through prop, so users can hide the on-plot legend for dense figures. Persisted via `config.js` (DEFAULT_CONFIG + serialize/parse). | ✅ | 2026-06-08 |
+| TASK-011 | Update `src/components/EnsemblePlot.test.js` to assert: (a) synthetic legend traces produced for a `colorBy` with no bands; (b) no synthetic traces when `colorBy` is null; (c) no double entries when `bandsActive`; plus toggled-off and `x/y:[null]` cases. 5 tests added, 186 total pass. | ✅ | 2026-06-08 |
 
 ## 3. Alternatives
 

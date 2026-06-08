@@ -62,6 +62,7 @@ export default function App() {
   const forceFreshSeedRef = useRef(false)
   const [colorBy, setColorBy] = useState(null)
   const [showBands, setShowBands] = useState(false)
+  const [showPlotLegend, setShowPlotLegend] = useState(true)
   const [xAxisLabel, setXAxisLabel] = useState('')
   const [yAxisLabel, setYAxisLabel] = useState('')
   const [lineStyleControls, setLineStyleControls] = useState({
@@ -557,6 +558,7 @@ export default function App() {
       activeByCategory,
       colorBy,
       showBands,
+      showPlotLegend,
       xAxisLabel,
       yAxisLabel,
       lineStyleControls,
@@ -586,6 +588,7 @@ export default function App() {
     setCategoriesText(cfg.categoriesText)
     setColorBy(cfg.colorBy)
     setShowBands(cfg.showBands)
+    setShowPlotLegend(cfg.showPlotLegend)
     setXAxisLabel(cfg.xAxisLabel)
     setYAxisLabel(cfg.yAxisLabel)
     setLineStyleControls({ ...DEFAULT_CONFIG.lineStyleControls, ...cfg.lineStyleControls })
@@ -696,6 +699,8 @@ export default function App() {
               onColorByChange={setColorBy}
               showBands={showBands}
               onShowBandsChange={setShowBands}
+              showPlotLegend={showPlotLegend}
+              onShowPlotLegendChange={setShowPlotLegend}
               xAxisLabel={xAxisLabel}
               yAxisLabel={yAxisLabel}
               defaultYAxisLabel={defaultYAxisLabel}
@@ -773,6 +778,7 @@ export default function App() {
                         colorMap={colorMap}
                         visibleColumns={visibleColumns}
                         showBands={showBands}
+                        showPlotLegend={showPlotLegend}
                         indexType={indexType}
                         xAxisLabel={xAxisLabel}
                         yAxisLabel={yAxisLabel}

@@ -49,6 +49,8 @@ export default function LabelControls({
   colorMap,
   onColorByChange,
   showBands,
+  showPlotLegend,
+  onShowPlotLegendChange,
   onShowBandsChange,
   xAxisLabel,
   yAxisLabel,
@@ -145,6 +147,18 @@ export default function LabelControls({
             Bands need ≥2 traces per colored group — none of the visible groups qualify yet.
           </p>
         )}
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showPlotLegend}
+            onChange={(e) => onShowPlotLegendChange(e.target.checked)}
+            disabled={!colorBy}
+            className="accent-accent"
+          />
+          <span className={colorBy ? '' : 'text-muted'}>
+            Show color legend on the figure
+          </span>
+        </label>
         <div className="flex flex-col gap-1">
           <label className="font-mono uppercase tracking-wider text-[10px] text-muted">
             X axis label (optional)
