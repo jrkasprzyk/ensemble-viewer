@@ -589,7 +589,9 @@ export default function LabelControls({
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-[10px] text-muted font-mono">Filter:</span>
-                {['Failure', 'Success'].map((v) => (
+                {['Failure', 'Success'].map((v) => {
+                  const swatch = colorBy === BUNDLED_CATEGORY ? (colorMap?.[v] ?? '#b5b2aa') : '#b5b2aa'
+                  return (
                   <label key={v} className={`flex items-center gap-1 ${selectedHorizons.size ? 'cursor-pointer' : 'cursor-default'}`}>
                     <input
                       type="checkbox"
@@ -598,9 +600,14 @@ export default function LabelControls({
                       disabled={!selectedHorizons.size}
                       className="accent-accent"
                     />
+                    <span
+                      className="inline-block w-3 h-3 rounded-sm border border-rule"
+                      style={{ background: swatch }}
+                    />
                     <span className={`font-mono text-[10px] ${!selectedHorizons.size ? 'text-muted' : ''}`}>{v}</span>
                   </label>
-                ))}
+                  )
+                })}
               </div>
               {!selectedHorizons.size && (
                 <p className="text-[11px] text-muted">Select time horizons to enable bundled classification.</p>
@@ -616,6 +623,7 @@ export default function LabelControls({
               <div className="flex items-center gap-3 ml-auto">
                 {['Failure', 'Success'].map((v) => {
                   const active = classificationSchemeSet.has(colorBy)
+                  const swatch = active ? (colorMap?.[v] ?? '#b5b2aa') : '#b5b2aa'
                   return (
                     <label key={v} className={`flex items-center gap-1 ${active ? 'cursor-pointer' : 'cursor-default'}`}>
                       <input
@@ -624,6 +632,10 @@ export default function LabelControls({
                         onChange={() => onClassificationFilterChange(v)}
                         disabled={!active}
                         className="accent-accent"
+                      />
+                      <span
+                        className="inline-block w-3 h-3 rounded-sm border border-rule"
+                        style={{ background: swatch }}
                       />
                       <span className={`font-mono text-[10px] ${!active ? 'text-muted' : ''}`}>{v}</span>
                     </label>

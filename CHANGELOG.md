@@ -9,6 +9,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ## [Unreleased]
 
 ### Added
+- Classification coloring now shows Success/Failure color swatches in the control panel (#24)
 
 ### Fixed
 
