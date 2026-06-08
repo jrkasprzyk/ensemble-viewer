@@ -132,7 +132,7 @@ export function buildLegendTraces({ colorBy, resolvedColorMap, bandsActive, show
     mode: 'lines',
     x: [null],
     y: [null],
-    name: value,
+    name: value || '⟨empty⟩',
     line: { color },
     showlegend: true,
     legendgroup: `g-${value}`,
