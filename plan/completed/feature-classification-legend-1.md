@@ -10,7 +10,7 @@ tags: [feature, ui, plot, classification]
 
 # Introduction
 
-![Status: Planned](https://img.shields.io/badge/status-Planned-blue)
+Status: Completed
 
 Issue [#24](https://github.com/jrkasprzyk/ensemble-viewer/issues/24): when coloring by a classification (Bundled or an Individual scheme), the figure and the control panel give no visual indication that **green = Success** and **orange = Failure**. Other `colorBy` modes (the Categories section) already render a color swatch next to each category value; classification coloring does not. This plan resolves the gap and presents the alternatives considered.
 
