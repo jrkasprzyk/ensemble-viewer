@@ -157,7 +157,10 @@ export default function EnsemblePlot({
     // Synthetic legend-only traces: give the figure a colorBy key that exports
     // with SVG/PNG without enabling the unusable per-column legend. Skipped when
     // bands are active (they already legend per group) — see buildLegendTraces.
-    const legendTraces = buildLegendTraces({ colorBy, resolvedColorMap, bandsActive, showPlotLegend })
+    const legendColorMap = Object.fromEntries(
+      Object.keys(groups).map((v) => [v, resolvedColorMap[v] ?? NEUTRAL_GRAY])
+    )
+    const legendTraces = buildLegendTraces({ colorBy, resolvedColorMap: legendColorMap, bandsActive, showPlotLegend })
     traces.push(...legendTraces)
 
     const layout = {
