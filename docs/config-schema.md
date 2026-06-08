@@ -49,6 +49,7 @@ element resets that setting to the application default on load.
 | `activeByCategory` | element | Per-category active value sets (see below) |
 | `colorBy` | string | Category name currently colored by; omit for none |
 | `showBands` | boolean | `true` / `false` |
+| `showPlotLegend` | boolean | `true` / `false` |
 | `xAxisLabel` | string | Manual x-axis label override |
 | `yAxisLabel` | string | Manual y-axis label override |
 | `lineStyleControls` | element | Line width/opacity settings (see below) |
@@ -185,6 +186,7 @@ Active values for the bundled and individual classification filters.
   </activeByCategory>
   <colorBy>RCP</colorBy>
   <showBands>true</showBands>
+  <showPlotLegend>true</showPlotLegend>
   <xAxisLabel>year</xAxisLabel>
   <yAxisLabel>Pool Elevation (ft)</yAxisLabel>
   <lineStyleControls>
