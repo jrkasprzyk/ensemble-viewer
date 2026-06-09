@@ -382,12 +382,23 @@ export function deriveSchemeNames(fileNames) {
  * Parse a bundle of classification `.txt` files (CSV format `"TraceNumber","Class"`).
  * Returns a raw map keyed by string trace number.
  *
+ * `priorFileNames` holds file names from earlier uploads in the same session.
+ * Scheme names are derived with those in context so a later single-file upload
+ * gets the same prefix/suffix stripping as the original batch (e.g. adding
+ * "run_fire.txt" after ["run_flood.txt", "run_drought.txt"] yields "fire",
+ * not "run_fire"). Names already assigned to earlier uploads are never
+ * recomputed — they may be keyed into view state (colorBy, sort) — so a
+ * first upload of a single file keeps its full base name even if later
+ * uploads would have stripped a common prefix.
+ *
  * @param {File[]} files
+ * @param {string[]} [priorFileNames]
  * @returns {Promise<Record<string, Record<string, string>>>}
  */
-export async function parseClassificationBundle(files) {
+export async function parseClassificationBundle(files, priorFileNames = []) {
   const Papa = (await import('papaparse')).default
-  const schemeNames = deriveSchemeNames(files.map((f) => f.name))
+  const allNames = [...priorFileNames, ...files.map((f) => f.name)]
+  const schemeNames = deriveSchemeNames(allNames).slice(priorFileNames.length)
   const seenNames = new Set()
   for (const name of schemeNames) {
     if (seenNames.has(name))
@@ -439,7 +450,7 @@ export function mergeClassificationBundles(existingRawByTraceNum, nextRawByTrace
   for (const schemes of Object.values(nextRawByTraceNum)) {
     for (const key of Object.keys(schemes)) {
       if (existingSchemes.has(key))
-        throw new Error(`Scheme "${key}" is already loaded. Rename the file or clear and reload.`)
+        throw new Error(`Scheme "${key}" is already loaded. Rename the file, or reload the data file to start over.`)
     }
   }
 

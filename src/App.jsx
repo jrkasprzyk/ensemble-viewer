@@ -47,6 +47,9 @@ export default function App() {
   const [labelsByColumn, setLabelsByColumn] = useState({})
   const [labelStrategy, setLabelStrategy] = useState('names')
   const [rawClassificationsByTrace, setRawClassificationsByTrace] = useState(null)
+  // File names of every classification upload this session, so later uploads
+  // derive scheme names with the same prefix/suffix context as earlier ones.
+  const classificationFileNamesRef = useRef([])
   const [labelRowCount, setLabelRowCount] = useState(0)
   const [delimiter, setDelimiter] = useState('_')
   const [categoriesText, setCategoriesText] = useState('')
@@ -114,6 +117,7 @@ export default function App() {
       forceFreshSeedRef.current = true
       setColorBy(null)
       setRawClassificationsByTrace(null)
+      classificationFileNamesRef.current = []
       setSelectedHorizons(new Set())
       setHorizonLogic('OR')
       setBundledFilter(new Set(['Failure', 'Success']))
@@ -271,12 +275,13 @@ export default function App() {
   async function loadClassifications(files) {
     setError(null)
     try {
-      const raw = await parseClassificationBundle(files)
+      const raw = await parseClassificationBundle(files, classificationFileNamesRef.current)
       // Merge before dispatch: mergeClassificationBundles throws on duplicate
       // scheme names, and a throw inside a setState updater would escape this
       // try/catch (React runs deferred updaters during render).
       const merged = mergeClassificationBundles(rawClassificationsByTrace, raw)
       setRawClassificationsByTrace(merged)
+      classificationFileNamesRef.current.push(...files.map((f) => f.name))
     } catch (e) {
       setError(e.message || String(e))
     }

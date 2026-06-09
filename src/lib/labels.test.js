@@ -431,6 +431,12 @@ describe('parseClassificationBundle', () => {
       'Classification file "scheme.txt" is missing column \'Class\''
     )
   })
+
+  it('derives a later single-file upload name in the context of prior file names', async () => {
+    const f = fakeFile('prefix_C.txt', '"TraceNumber","Class"\n1,Success\n')
+    const result = await parseClassificationBundle([f], ['prefix_A.txt', 'prefix_B.txt'])
+    expect(result['1']).toEqual({ C: 'Success' })
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -457,7 +463,7 @@ describe('mergeClassificationBundles', () => {
     const existing = { '1': { A: 'Success' } }
     const next = { '1': { A: 'Failure' } }
     expect(() => mergeClassificationBundles(existing, next)).toThrow(
-      'Scheme "A" is already loaded. Rename the file or clear and reload.'
+      'Scheme "A" is already loaded. Rename the file, or reload the data file to start over.'
     )
   })
 })
