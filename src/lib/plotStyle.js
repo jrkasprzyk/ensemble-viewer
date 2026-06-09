@@ -101,6 +101,45 @@ export function tickFormatString(option, axisType) {
   }
 }
 
+/**
+ * Synthetic legend-only traces for the on-figure colorBy legend.
+ *
+ * Individual column traces carry showlegend:false (a ~500-row legend, one per
+ * column, is unusable), so coloring by a category otherwise leaves the figure
+ * with no key. Each trace here draws nothing on the canvas — x:[null], y:[null]
+ * plots no point and does not affect autorange — but claims one labeled,
+ * colored legend row. The count tracks the number of distinct colorBy values
+ * (2 for Success/Failure), never the line count.
+ *
+ * Returns [] when there is no colorBy, the legend is toggled off, or bands are
+ * active: the band/mean traces already supply one legend row per group, so
+ * emitting these too would double every entry (TASK-009).
+ *
+ * legendgroup mirrors the individual traces' `g-${value}`, so clicking a legend
+ * row toggles every line of that color.
+ *
+ * @param {object}                 args
+ * @param {?string}                args.colorBy
+ * @param {Record<string,string>}  args.resolvedColorMap  value → hex
+ * @param {boolean}                args.bandsActive
+ * @param {boolean}                args.showPlotLegend
+ * @returns {object[]} Plotly trace objects (possibly empty).
+ */
+export function buildLegendTraces({ colorBy, resolvedColorMap, bandsActive, showPlotLegend }) {
+  if (!colorBy || !showPlotLegend || bandsActive) return []
+  return Object.entries(resolvedColorMap ?? {}).map(([value, color]) => ({
+    type: 'scatter',
+    mode: 'lines',
+    x: [null],
+    y: [null],
+    name: value || '⟨empty⟩',
+    line: { color },
+    showlegend: true,
+    legendgroup: `g-${value}`,
+    hoverinfo: 'skip',
+  }))
+}
+
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value))
 }

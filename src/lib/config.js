@@ -56,6 +56,7 @@ export const DEFAULT_CONFIG = {
   activeByCategory: {},
   colorBy: null,
   showBands: false,
+  showPlotLegend: true,
   xAxisLabel: '',
   yAxisLabel: '',
   lineStyleControls: {
@@ -121,6 +122,9 @@ export function serializeConfig(state = {}) {
   append('colorBy', state.colorBy)
   if (state.showBands !== undefined && state.showBands !== null) {
     append('showBands', state.showBands ? 'true' : 'false')
+  }
+  if (state.showPlotLegend !== undefined && state.showPlotLegend !== null) {
+    append('showPlotLegend', state.showPlotLegend ? 'true' : 'false')
   }
   append('xAxisLabel', state.xAxisLabel)
   append('yAxisLabel', state.yAxisLabel)
@@ -258,6 +262,9 @@ export function parseConfig(xmlString) {
 
   const showBands = text('showBands')
   if (showBands !== undefined) out.showBands = showBands === 'true'
+
+  const showPlotLegend = text('showPlotLegend')
+  if (showPlotLegend !== undefined) out.showPlotLegend = showPlotLegend === 'true'
 
   const horizonLogic = text('horizonLogic')
   if (horizonLogic !== undefined && HORIZON_LOGIC_OPTIONS.has(horizonLogic)) {

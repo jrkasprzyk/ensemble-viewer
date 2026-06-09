@@ -45,6 +45,10 @@ A classification bundle tags traces by trace number — useful when the same tra
 
 When you select multiple schemes as **horizons**, you can combine them with AND/OR logic into a single pass/fail filter. See [Reference → Classification bundle](reference.md#classification-bundle) for the file spec.
 
+When you **Color** by a classification (Bundled or an Individual scheme), the panel shows a color swatch next to each value — green for `Success`, orange for `Failure` — so the figure's colors map back to their meaning. Schemes that aren't the active color show neutral gray swatches.
+
+The figure itself also carries a color legend whenever a color grouping is active, so the meaning survives in exported SVG/PNG. Toggle it under **Display → "Show color legend on the figure"** — useful to hide it on dense plots or when a category has many values.
+
 ## Save and load a configuration preset
 
 The **Configuration** panel saves and restores the entire left-hand control setup — label strategy, filters, colouring, axis labels, line styling, splits, sorts, and classification selections.
