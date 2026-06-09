@@ -102,6 +102,29 @@ export function tickFormatString(option, axisType) {
 }
 
 /**
+ * Escape file-derived text before it reaches a Plotly HTML sink (hovertemplate,
+ * trace `name`, axis/legend titles). Plotly renders a limited HTML subset in
+ * these fields — including <a href>, so an unescaped column name or label value
+ * from an uploaded file could inject a clickable link into tooltips or the
+ * on-figure legend (and into downloaded SVG/PNG).
+ *
+ * `template: true` additionally doubles `%` so the text cannot be misread as a
+ * hovertemplate directive (`%{...}`). Only needed for hovertemplate strings;
+ * trace names render `%` literally.
+ *
+ * @param {*} text                       Coerced via String; null/undefined → ''.
+ * @param {object} [options]
+ * @param {boolean} [options.template]   Also escape `%` → `%%`.
+ * @returns {string}
+ */
+export function escapePlotlyText(text, { template = false } = {}) {
+  let s = text == null ? '' : String(text)
+  s = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  if (template) s = s.replace(/%/g, '%%')
+  return s
+}
+
+/**
  * Synthetic legend-only traces for the on-figure colorBy legend.
  *
  * Individual column traces carry showlegend:false (a ~500-row legend, one per
@@ -132,7 +155,7 @@ export function buildLegendTraces({ colorBy, resolvedColorMap, bandsActive, show
     mode: 'lines',
     x: [null],
     y: [null],
-    name: value || '⟨empty⟩',
+    name: escapePlotlyText(value) || '⟨empty⟩',
     line: { color },
     showlegend: true,
     legendgroup: `g-${value}`,

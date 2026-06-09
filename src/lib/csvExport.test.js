@@ -29,6 +29,26 @@ describe('datasetToWideCsv', () => {
   })
 })
 
+describe('formula-injection guard', () => {
+  const hostile = {
+    columns: ['t1'],
+    indexColumn: 'date',
+    rows: [{ date: '2024-01-01', t1: -12.5 }],
+    labelsByColumn: { t1: { 'Obj.Note': '=HYPERLINK("https://evil")', 'Obj.Plus': '+1+cmd' } },
+  }
+
+  it('prefixes non-numeric =/+ cells with a quote in stacked label rows', () => {
+    const rows = parse(datasetToStackedCsv(hostile))
+    expect(rows[0][1]).toBe(`"'=HYPERLINK(""https://evil"")"`)
+    expect(rows[1][1]).toBe(`'+1+cmd`)
+  })
+
+  it('leaves negative numbers untouched', () => {
+    const rows = parse(datasetToWideCsv(hostile))
+    expect(rows[1][1]).toBe('-12.5')
+  })
+})
+
 describe('datasetToStackedCsv', () => {
   const rows = parse(datasetToStackedCsv(dataset))
 

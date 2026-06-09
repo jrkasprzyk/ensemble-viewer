@@ -2,11 +2,45 @@ import { describe, it, expect } from 'vitest'
 import {
   resolveLineStyling,
   tickFormatString,
+  escapePlotlyText,
+  buildLegendTraces,
   MIN_LINE_WIDTH,
   MAX_LINE_WIDTH,
   MIN_LINE_OPACITY,
   MAX_LINE_OPACITY,
 } from './plotStyle.js'
+
+describe('escapePlotlyText', () => {
+  it('escapes HTML so file-derived text cannot inject links into Plotly sinks', () => {
+    expect(escapePlotlyText('<a href="https://evil">x</a>'))
+      .toBe('&lt;a href="https://evil"&gt;x&lt;/a&gt;')
+    expect(escapePlotlyText('A & B')).toBe('A &amp; B')
+  })
+
+  it('leaves % alone by default but doubles it in template mode', () => {
+    expect(escapePlotlyText('95% flow')).toBe('95% flow')
+    expect(escapePlotlyText('95% flow', { template: true })).toBe('95%% flow')
+    expect(escapePlotlyText('%{x}', { template: true })).toBe('%%{x}')
+  })
+
+  it('coerces null/undefined to empty string', () => {
+    expect(escapePlotlyText(null)).toBe('')
+    expect(escapePlotlyText(undefined)).toBe('')
+  })
+})
+
+describe('buildLegendTraces escaping', () => {
+  it('escapes category values used as legend labels', () => {
+    const traces = buildLegendTraces({
+      colorBy: 'cat',
+      resolvedColorMap: { '<b>bold</b>': '#fff' },
+      bandsActive: false,
+      showPlotLegend: true,
+    })
+    expect(traces).toHaveLength(1)
+    expect(traces[0].name).toBe('&lt;b&gt;bold&lt;/b&gt;')
+  })
+})
 
 describe('tickFormatString', () => {
   it('maps each numeric precision option to a d3-format code', () => {
