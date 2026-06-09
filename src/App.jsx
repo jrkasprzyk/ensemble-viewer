@@ -315,7 +315,7 @@ export default function App() {
     for (const schemes of Object.values(rawClassificationsByTrace)) {
       for (const key of Object.keys(schemes)) allKeys.add(key)
     }
-    return [...allKeys]
+    return [...allKeys].sort()
   }, [rawClassificationsByTrace])
 
   const classificationSchemeCount = classificationSchemeNames.length
