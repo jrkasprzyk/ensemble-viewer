@@ -12,6 +12,7 @@ import {
   buildVisibleColumnSet,
   deriveSchemeNames,
   parseClassificationBundle,
+  mergeClassificationBundles,
   applyClassificationMapping,
   buildBundledLabels,
   BUNDLED_CATEGORY,
@@ -428,6 +429,35 @@ describe('parseClassificationBundle', () => {
     const f = fakeFile('scheme.txt', '"TraceNumber","Label"\n1,Success\n')
     await expect(parseClassificationBundle([f])).rejects.toThrow(
       'Classification file "scheme.txt" is missing column \'Class\''
+    )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// mergeClassificationBundles
+// ---------------------------------------------------------------------------
+describe('mergeClassificationBundles', () => {
+  it('adds newly loaded schemes on top of existing bundle data', () => {
+    const existing = {
+      '1': { A: 'Success' },
+      '2': { A: 'Failure' },
+    }
+    const next = {
+      '1': { B: 'Failure' },
+      '3': { B: 'Success' },
+    }
+    expect(mergeClassificationBundles(existing, next)).toEqual({
+      '1': { A: 'Success', B: 'Failure' },
+      '2': { A: 'Failure' },
+      '3': { B: 'Success' },
+    })
+  })
+
+  it('throws when adding a scheme name that is already loaded', () => {
+    const existing = { '1': { A: 'Success' } }
+    const next = { '1': { A: 'Failure' } }
+    expect(() => mergeClassificationBundles(existing, next)).toThrow(
+      'Scheme "A" is already loaded. Rename the file or clear and reload.'
     )
   })
 })

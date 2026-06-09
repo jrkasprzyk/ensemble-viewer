@@ -12,6 +12,7 @@ import {
   seedActiveByCategory,
   parseSidecarLabels,
   parseClassificationBundle,
+  mergeClassificationBundles,
   applyClassificationMapping,
   summarizeLabels,
   tieLabelCategories,
@@ -271,7 +272,7 @@ export default function App() {
     setError(null)
     try {
       const raw = await parseClassificationBundle(files)
-      setRawClassificationsByTrace(raw)
+      setRawClassificationsByTrace((prev) => mergeClassificationBundles(prev, raw))
     } catch (e) {
       setError(e.message || String(e))
     }

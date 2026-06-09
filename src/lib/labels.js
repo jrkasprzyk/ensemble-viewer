@@ -422,6 +422,38 @@ export async function parseClassificationBundle(files) {
 }
 
 /**
+ * Merge a newly parsed classification bundle into an existing one.
+ * Throws when a scheme name already exists to prevent silent overwrite.
+ *
+ * @param {Record<string, Record<string, string>> | null} existingRawByTraceNum
+ * @param {Record<string, Record<string, string>>} nextRawByTraceNum
+ * @returns {Record<string, Record<string, string>>}
+ */
+export function mergeClassificationBundles(existingRawByTraceNum, nextRawByTraceNum) {
+  if (!existingRawByTraceNum) return nextRawByTraceNum
+
+  const existingSchemes = new Set()
+  for (const schemes of Object.values(existingRawByTraceNum)) {
+    for (const key of Object.keys(schemes)) existingSchemes.add(key)
+  }
+  for (const schemes of Object.values(nextRawByTraceNum)) {
+    for (const key of Object.keys(schemes)) {
+      if (existingSchemes.has(key))
+        throw new Error(`Scheme "${key}" is already loaded. Rename the file or clear and reload.`)
+    }
+  }
+
+  const merged = {}
+  for (const [trace, schemes] of Object.entries(existingRawByTraceNum)) {
+    merged[trace] = { ...schemes }
+  }
+  for (const [trace, schemes] of Object.entries(nextRawByTraceNum)) {
+    merged[trace] = { ...(merged[trace] || {}), ...schemes }
+  }
+  return merged
+}
+
+/**
  * Map a raw trace-keyed classification map onto data column names.
  * Columns whose name has no numeric suffix, or whose suffix has no entry in
  * `rawByTraceNum`, are omitted from the output.
