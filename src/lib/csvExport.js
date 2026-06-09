@@ -14,8 +14,9 @@
 // spreadsheet convention for "literal text"). Numeric strings (e.g. "-12.5")
 // pass through untouched so data columns are unaffected.
 function guardFormulaInjection(s) {
-  if (!/^[=+\-@\t\r]/.test(s)) return s
-  if (Number.isFinite(Number(s))) return s
+  const stripped = s.replace(/^[\t\r\n ]+/, '')
+  if (!/^[=+\-@]/.test(stripped)) return s
+  if (Number.isFinite(Number(stripped))) return s
   return `'${s}`
 }
 
