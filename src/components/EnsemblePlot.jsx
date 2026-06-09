@@ -7,7 +7,7 @@ const PlotlyLib = Plotly?.default ?? Plotly
 const Plot = createPlotlyComponent(PlotlyLib)
 import { NEUTRAL_GRAY } from '../lib/palette.js'
 import { computeGroupStats } from '../lib/stats.js'
-import { resolveLineStyling, tickFormatString, buildLegendTraces } from '../lib/plotStyle.js'
+import { resolveLineStyling, tickFormatString, buildLegendTraces, escapePlotlyText } from '../lib/plotStyle.js'
 
 const DOWNLOAD_FORMATS = ['svg', 'png']
 
@@ -92,8 +92,12 @@ export default function EnsemblePlot({
         y: rows.map((r) => r[col]),
         line: { width: individualLineWidth, color },
         opacity: individualOpacity,
-        hovertemplate: `<b>${col}</b>` +
-          Object.entries(labelsByColumn[col] ?? {}).map(([k, v]) => `<br>${k}: ${v}`).join('') +
+        // Column names and label values come from the uploaded file — escape
+        // them so they can't inject HTML or %{...} directives into the tooltip.
+        hovertemplate: `<b>${escapePlotlyText(col, { template: true })}</b>` +
+          Object.entries(labelsByColumn[col] ?? {})
+            .map(([k, v]) => `<br>${escapePlotlyText(k, { template: true })}: ${escapePlotlyText(v, { template: true })}`)
+            .join('') +
           `<br>%{x}: %{y:.4g}<extra></extra>`,
         visible: visible ? true : false,
         legendgroup: colorBy ? `g-${categoryVal}` : undefined,
@@ -135,7 +139,7 @@ export default function EnsemblePlot({
           line: { width: 0, color },
           fill: 'tonexty',
           fillcolor: rgba,
-          name: `${val} p10–p90`,
+          name: `${escapePlotlyText(val)} p10–p90`,
           hoverinfo: 'skip',
           showlegend: true,
           legendgroup: `band-${val}`,
@@ -146,10 +150,10 @@ export default function EnsemblePlot({
           mode: 'lines',
           x,
           y: mean,
-          name: `${val} mean`,
+          name: `${escapePlotlyText(val)} mean`,
           line: { width: 2.5, color },
           legendgroup: `band-${val}`,
-          hovertemplate: `<b>${val} mean</b><br>%{x}: %{y:.4g}<extra></extra>`,
+          hovertemplate: `<b>${escapePlotlyText(val, { template: true })} mean</b><br>%{x}: %{y:.4g}<extra></extra>`,
         })
       }
     }

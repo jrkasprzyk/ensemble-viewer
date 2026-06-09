@@ -8,10 +8,21 @@
 // parseCsvFile) — { columns, indexColumn, rows, labelsByColumn } — and return a
 // CSV string. The caller wraps the string in a Blob for download.
 
+// Formula-injection guard (CSV injection): a non-numeric cell starting with
+// = + - @ or a tab/CR would be evaluated as a formula by Excel/Sheets when the
+// exported file is opened there. Prefix such cells with a single quote (the
+// spreadsheet convention for "literal text"). Numeric strings (e.g. "-12.5")
+// pass through untouched so data columns are unaffected.
+function guardFormulaInjection(s) {
+  if (!/^[=+\-@\t\r]/.test(s)) return s
+  if (Number.isFinite(Number(s))) return s
+  return `'${s}`
+}
+
 // RFC-4180-ish field quoting: quote when the value contains a comma, quote,
 // CR or LF; double embedded quotes.
 function csvField(value) {
-  const s = value == null ? '' : String(value)
+  const s = guardFormulaInjection(value == null ? '' : String(value))
   if (/[",\r\n]/.test(s)) {
     return `"${s.replace(/"/g, '""')}"`
   }
