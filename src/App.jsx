@@ -13,6 +13,8 @@ import {
   parseSidecarLabels,
   parseClassificationBundle,
   mergeClassificationBundles,
+  computeSchemeRenames,
+  renameBundleSchemes,
   applyClassificationMapping,
   summarizeLabels,
   tieLabelCategories,
@@ -275,13 +277,37 @@ export default function App() {
   async function loadClassifications(files) {
     setError(null)
     try {
-      const raw = await parseClassificationBundle(files, classificationFileNamesRef.current)
+      const prior = classificationFileNamesRef.current
+      const newNames = files.map((f) => f.name)
+      const raw = await parseClassificationBundle(files, prior)
+      // Re-derive-all invariant: scheme names always match what one combined
+      // upload would produce, so adding files can rename existing schemes
+      // (e.g. "run_flood" → "flood" once "run_fire.txt" joins the context).
+      const renames = computeSchemeRenames(prior, newNames)
+      const renamed = renameBundleSchemes(rawClassificationsByTrace, renames)
       // Merge before dispatch: mergeClassificationBundles throws on duplicate
       // scheme names, and a throw inside a setState updater would escape this
       // try/catch (React runs deferred updaters during render).
-      const merged = mergeClassificationBundles(rawClassificationsByTrace, raw)
+      const merged = mergeClassificationBundles(renamed, raw)
       setRawClassificationsByTrace(merged)
-      classificationFileNamesRef.current.push(...files.map((f) => f.name))
+      // Remap view state keyed on the old scheme names so the rename is
+      // invisible: same coloring/sort/filters, new labels.
+      if (Object.keys(renames).length) {
+        const remap = (v) => (v && renames[v]) || v
+        setColorBy(remap)
+        setSortCategory(remap)
+        setSplitBy(remap)
+        setTieCategoryA(remap)
+        setTieCategoryB(remap)
+        const remapKeys = (obj) => {
+          const out = {}
+          for (const [k, v] of Object.entries(obj)) out[remap(k)] = v
+          return out
+        }
+        setActiveByCategory(remapKeys)
+        prevCategoryValuesRef.current = remapKeys(prevCategoryValuesRef.current)
+      }
+      classificationFileNamesRef.current = [...prior, ...newNames]
     } catch (e) {
       setError(e.message || String(e))
     }

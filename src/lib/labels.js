@@ -383,13 +383,12 @@ export function deriveSchemeNames(fileNames) {
  * Returns a raw map keyed by string trace number.
  *
  * `priorFileNames` holds file names from earlier uploads in the same session.
- * Scheme names are derived with those in context so a later single-file upload
- * gets the same prefix/suffix stripping as the original batch (e.g. adding
- * "run_fire.txt" after ["run_flood.txt", "run_drought.txt"] yields "fire",
- * not "run_fire"). Names already assigned to earlier uploads are never
- * recomputed — they may be keyed into view state (colorBy, sort) — so a
- * first upload of a single file keeps its full base name even if later
- * uploads would have stripped a common prefix.
+ * Scheme names are derived with those in context, keeping the invariant that
+ * names always match what one combined upload of every file would produce
+ * (e.g. adding "run_fire.txt" after ["run_flood.txt", "run_drought.txt"]
+ * yields "fire", not "run_fire"). The caller renames previously loaded
+ * schemes to the same full-context derivation via `computeSchemeRenames` +
+ * `renameBundleSchemes`.
  *
  * @param {File[]} files
  * @param {string[]} [priorFileNames]
@@ -430,6 +429,55 @@ export async function parseClassificationBundle(files, priorFileNames = []) {
   }
 
   return rawByTraceNum
+}
+
+/**
+ * Compute how previously assigned scheme names change when new files join the
+ * derivation context. Prior names are always `deriveSchemeNames(priorFileNames)`
+ * (the re-derive-all invariant holds inductively across uploads); the new
+ * names are the same positions in the full-context derivation.
+ *
+ * Returns a map of oldName → newName containing only names that change.
+ * Returns an empty map (skip renaming) when the full-context derivation would
+ * collide two prior names — the merge duplicate guard then reports any
+ * resulting conflict instead of silently dropping a scheme.
+ *
+ * @param {string[]} priorFileNames
+ * @param {string[]} newFileNames
+ * @returns {Record<string, string>}
+ */
+export function computeSchemeRenames(priorFileNames, newFileNames) {
+  if (!priorFileNames.length) return {}
+  const before = deriveSchemeNames(priorFileNames)
+  const after = deriveSchemeNames([...priorFileNames, ...newFileNames]).slice(0, priorFileNames.length)
+  if (new Set(after).size !== after.length) return {}
+  const renames = {}
+  for (let i = 0; i < before.length; i++) {
+    if (before[i] !== after[i]) renames[before[i]] = after[i]
+  }
+  return renames
+}
+
+/**
+ * Return a copy of a raw classification bundle with scheme keys renamed.
+ * Unmapped keys pass through; returns the input unchanged when there is
+ * nothing to rename.
+ *
+ * @param {Record<string, Record<string, string>> | null} rawByTraceNum
+ * @param {Record<string, string>} renames oldName → newName
+ * @returns {Record<string, Record<string, string>> | null}
+ */
+export function renameBundleSchemes(rawByTraceNum, renames) {
+  if (!rawByTraceNum || !Object.keys(renames).length) return rawByTraceNum
+  const out = {}
+  for (const [trace, schemes] of Object.entries(rawByTraceNum)) {
+    const next = {}
+    for (const [key, val] of Object.entries(schemes)) {
+      next[renames[key] ?? key] = val
+    }
+    out[trace] = next
+  }
+  return out
 }
 
 /**

@@ -267,9 +267,13 @@ export default function FileDropzone({
             <span className="font-mono uppercase tracking-wider text-[10px] text-muted">
               Classification files (optional)
             </span>
-            {classificationSchemeCount > 0 && (
+            {classificationSchemeCount > 0 ? (
               <span className="font-mono text-[10px] text-ink">
                 {classificationSchemeCount} scheme{classificationSchemeCount !== 1 ? 's' : ''} loaded
+              </span>
+            ) : (
+              <span className="font-mono text-[10px] text-muted">
+                Select one or more .txt files
               </span>
             )}
           </div>

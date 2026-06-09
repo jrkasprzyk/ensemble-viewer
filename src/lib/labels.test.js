@@ -13,6 +13,8 @@ import {
   deriveSchemeNames,
   parseClassificationBundle,
   mergeClassificationBundles,
+  computeSchemeRenames,
+  renameBundleSchemes,
   applyClassificationMapping,
   buildBundledLabels,
   BUNDLED_CATEGORY,
@@ -436,6 +438,46 @@ describe('parseClassificationBundle', () => {
     const f = fakeFile('prefix_C.txt', '"TraceNumber","Class"\n1,Success\n')
     const result = await parseClassificationBundle([f], ['prefix_A.txt', 'prefix_B.txt'])
     expect(result['1']).toEqual({ C: 'Success' })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// computeSchemeRenames / renameBundleSchemes
+// ---------------------------------------------------------------------------
+describe('computeSchemeRenames', () => {
+  it('renames a full-base-name first upload once a second file gives context', () => {
+    expect(computeSchemeRenames(['run_flood.txt'], ['run_fire.txt'])).toEqual({
+      run_flood: 'flood',
+    })
+  })
+
+  it('returns empty map when prior names are unchanged by the new context', () => {
+    expect(
+      computeSchemeRenames(['prefix_A.txt', 'prefix_B.txt'], ['prefix_C.txt'])
+    ).toEqual({})
+  })
+
+  it('returns empty map when there are no prior files', () => {
+    expect(computeSchemeRenames([], ['run_fire.txt'])).toEqual({})
+  })
+})
+
+describe('renameBundleSchemes', () => {
+  it('renames scheme keys across every trace, passing unmapped keys through', () => {
+    const raw = {
+      '1': { run_flood: 'Success', other: 'Failure' },
+      '2': { run_flood: 'Failure' },
+    }
+    expect(renameBundleSchemes(raw, { run_flood: 'flood' })).toEqual({
+      '1': { flood: 'Success', other: 'Failure' },
+      '2': { flood: 'Failure' },
+    })
+  })
+
+  it('returns input unchanged for a null bundle or empty rename map', () => {
+    expect(renameBundleSchemes(null, { a: 'b' })).toBeNull()
+    const raw = { '1': { A: 'Success' } }
+    expect(renameBundleSchemes(raw, {})).toBe(raw)
   })
 })
 
