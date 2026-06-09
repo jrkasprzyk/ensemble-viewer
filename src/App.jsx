@@ -272,7 +272,11 @@ export default function App() {
     setError(null)
     try {
       const raw = await parseClassificationBundle(files)
-      setRawClassificationsByTrace((prev) => mergeClassificationBundles(prev, raw))
+      // Merge before dispatch: mergeClassificationBundles throws on duplicate
+      // scheme names, and a throw inside a setState updater would escape this
+      // try/catch (React runs deferred updaters during render).
+      const merged = mergeClassificationBundles(rawClassificationsByTrace, raw)
+      setRawClassificationsByTrace(merged)
     } catch (e) {
       setError(e.message || String(e))
     }
@@ -303,14 +307,18 @@ export default function App() {
 
   // --- Derived state -----------------------------------------------------
 
-  const classificationSchemeCount = useMemo(() => {
-    if (!rawClassificationsByTrace) return 0
+  // Union across all traces: merged bundles can cover different trace sets per
+  // scheme, so no single trace is guaranteed to list every scheme.
+  const classificationSchemeNames = useMemo(() => {
+    if (!rawClassificationsByTrace) return []
     const allKeys = new Set()
     for (const schemes of Object.values(rawClassificationsByTrace)) {
       for (const key of Object.keys(schemes)) allKeys.add(key)
     }
-    return allKeys.size
+    return [...allKeys]
   }, [rawClassificationsByTrace])
+
+  const classificationSchemeCount = classificationSchemeNames.length
 
   const classificationLabels = useMemo(() => {
     if (!rawClassificationsByTrace || !columns.length) return null
@@ -326,12 +334,6 @@ export default function App() {
   useEffect(() => {
     if (!selectedHorizons.size && colorBy === BUNDLED_CATEGORY) setColorBy(null)
   }, [selectedHorizons, colorBy])
-
-  const classificationSchemeNames = useMemo(() => {
-    if (!rawClassificationsByTrace) return []
-    const first = Object.values(rawClassificationsByTrace)[0] || {}
-    return Object.keys(first)
-  }, [rawClassificationsByTrace])
 
   const mergedLabelsByColumn = useMemo(() => {
     if (!labelsByColumn || !selectedHorizons.size) return labelsByColumn
