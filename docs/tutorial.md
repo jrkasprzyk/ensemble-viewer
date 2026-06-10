@@ -4,9 +4,9 @@ This tutorial walks you through Ensemble Viewer from a cold start to reading a p
 
 Allow about ten minutes.
 
-## Before you start
+## Before you start (for using locally)
 
-You need [Node.js](https://nodejs.org/) v18 or later. Confirm it is installed:
+To run locally, you need [Node.js](https://nodejs.org/) v18 or later. Confirm it is installed:
 
 ```bash
 node --version
@@ -14,7 +14,7 @@ node --version
 
 If that prints a version of `v18` or higher, you are ready.
 
-## Step 1 — Start the app
+## Step 1 — Start the app (locally)
 
 From the project folder, install dependencies once and start the development server:
 
@@ -24,6 +24,10 @@ npm run dev
 ```
 
 The terminal prints a local URL. Open <http://localhost:5173> in your browser. You will see the **Ensemble Viewer** header, an empty plot area that says *Drop a file to begin*, and a control panel on the left with a **Data file** drop zone.
+
+## Step 1 -- Load the app in a browser (for online users)
+
+Visit [https://ensemble-viewer.vercel.app/](https://ensemble-viewer.vercel.app/) in your browser. All subsequent steps are the same.
 
 ## Step 2 — Load an example dataset
 
