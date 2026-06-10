@@ -791,7 +791,7 @@ export default function App() {
 
         <section className="p-3 min-h-0">
           {rows.length === 0 ? (
-            <EmptyState />
+            <EmptyState awaitingSlot={rdfSlots.length > 0} />
           ) : (
             <Suspense fallback={<div>Loading plot…</div>}>
               <div className="h-full overflow-y-auto flex flex-col gap-3">
@@ -840,7 +840,21 @@ function parseCategoriesText(text) {
     .filter(Boolean)
 }
 
-function EmptyState() {
+function EmptyState({ awaitingSlot = false }) {
+  if (awaitingSlot) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="max-w-md text-center">
+          <h2 className="font-display text-2xl font-light mb-3">Choose a series slot to begin</h2>
+          <p className="text-sm text-muted leading-relaxed">
+            The RDF file is loaded. Pick a series slot from the dropdown on the
+            left to plot it — each slot is a variable recorded across the
+            ensemble. Classification files can be attached at any point.
+          </p>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="h-full flex items-center justify-center">
       <div className="max-w-md text-center">
