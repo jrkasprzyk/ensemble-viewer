@@ -320,15 +320,47 @@ describe('mergeRdfs', () => {
       'Reservoir.Streamflow': 'streamflow.rdf',
       'Reservoir.Release': 'res.rdf',
     })
+    expect(merged.duplicates).toEqual([])
   })
 
-  it('throws on duplicate slot keys across files', () => {
+  it('ignores a duplicate slot whose units and values are identical', () => {
     const a = parseRdf(createMockRdfText({ slotName: 'Flow', values: [1, 2] }))
-    const b = parseRdf(createMockRdfText({ slotName: 'Flow', values: [3, 4] }))
-    expect(() => mergeRdfs([
+    const b = parseRdf(createMockRdfText({ slotName: 'Flow', values: [1, 2] }))
+    const merged = mergeRdfs([
       { name: 'a.rdf', rdf: a },
       { name: 'b.rdf', rdf: b },
-    ])).toThrow(/Duplicate slot/)
+    ])
+    expect(Object.keys(merged.rdf.runs[0].slots)).toEqual(['Reservoir.Flow'])
+    expect(merged.slotSources['Reservoir.Flow']).toBe('a.rdf')
+    expect(merged.duplicates).toEqual([
+      { key: 'Reservoir.Flow', action: 'ignored-identical', files: ['a.rdf', 'b.rdf'] },
+    ])
+    expect(merged.rdf.warnings.some((w) => /identical/.test(w))).toBe(true)
+  })
+
+  it('keeps both versions of a conflicting duplicate slot under a suffixed key', () => {
+    const a = parseRdf(createMockRdfText({ slotName: 'Flow', values: [1, 2] }))
+    const b = parseRdf(createMockRdfText({ slotName: 'Flow', values: [3, 4] }))
+    const merged = mergeRdfs([
+      { name: 'a.rdf', rdf: a },
+      { name: 'b.rdf', rdf: b },
+    ])
+    expect(Object.keys(merged.rdf.runs[0].slots).sort()).toEqual(
+      ['Reservoir.Flow', 'Reservoir.Flow [b.rdf]']
+    )
+    // Original key keeps the first file's values; suffixed key holds the second's.
+    expect(merged.rdf.runs[0].slots['Reservoir.Flow'].values).toEqual([1, 2])
+    expect(merged.rdf.runs[0].slots['Reservoir.Flow [b.rdf]'].values).toEqual([3, 4])
+    expect(merged.slotSources).toEqual({
+      'Reservoir.Flow': 'a.rdf',
+      'Reservoir.Flow [b.rdf]': 'b.rdf',
+    })
+    expect(merged.duplicates).toEqual([
+      { key: 'Reservoir.Flow', action: 'kept-both', files: ['a.rdf', 'b.rdf'] },
+    ])
+    // Both versions remain individually plottable.
+    const ds = rdfToDataset(merged.rdf, 'Reservoir.Flow [b.rdf]')
+    expect(ds.rows.map((r) => r.trace_1)).toEqual([3, 4])
   })
 
   it('throws when file timesteps do not align', () => {

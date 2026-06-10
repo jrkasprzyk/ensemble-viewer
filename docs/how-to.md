@@ -18,15 +18,19 @@ Stacked label rows above the data are detected automatically. If the detection i
 
 The viewer reads [RiverWare `.rdf` files](https://riverware.org/HelpSystem/CurrentVersion/index.html#page/OutputVisual/Output_RDF.11.1.html) directly. Unlike a CSV or Excel file, an `.rdf` file is not one table — it can contain many **slots**, each its own ensemble — so loading it takes one extra step: choosing which slot to plot.
 
-1. Drag one or more `.rdf` files onto the page (or **Browse** to select them). If you select multiple RDF files, they must come from the same model run (same traces and timesteps).
+1. Drag one or more `.rdf` files onto the page (or **Browse** to select them). If you load multiple RDF files, they must come from the same model run (same traces and timesteps).
 2. The viewer parses the selected RDF file(s) and reports how many combined **series slots** it found.
 3. An **RDF series slot** dropdown appears. Pick the slot you want to view. Slots are grouped by source file, but all slots are available in one combined list.
-4. Switch slots at any time from the same dropdown. Your filters and colour grouping are preserved across slots of the same RDF load, because every slot shares the same set of traces.
-5. To save the current slot as a file, use the **Download CSV** buttons:
+4. To bring in more data, drop or select additional `.rdf` files at any time — their slots are merged into the same list, and the slot you are viewing (plus your filters) stays put. Re-selecting a filename that is already loaded replaces that file. A **Loaded RDF files** list in the drop zone shows every file, each with a **✕** button to remove it again.
+5. Switch slots at any time from the same dropdown. Your filters and colour grouping are preserved across slots of the same RDF load, because every slot shares the same set of traces.
+6. To save the current slot as a file, use the **Download CSV** buttons:
    - **Wide** — rows are timesteps, columns are traces.
    - **Stacked** — the same data with any scalar slot values written as label header rows on top, which the viewer auto-detects on re-load.
 
-The downloaded CSV is named after the slot. 
+The downloaded CSV is named after the slot.
+
+If two files contain the same slot, that is not an error. An identical copy (same units and values) is silently ignored; a copy with **different** values is kept alongside the original under a source-suffixed name — for example `Mead.Pool Elevation [res.rdf]` — so you can pick either version from the slot dropdown.
+
 
 For batch or scripted conversion outside the browser, use the [Python scripts](../scripts/README.md) instead.
 

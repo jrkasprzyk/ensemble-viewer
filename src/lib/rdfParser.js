@@ -240,12 +240,33 @@ export function listSlots(rdf) {
   }))
 }
 
+// Two copies of a slot are interchangeable when units and every value agree
+// in a given run. Used to silently drop identical duplicates during merge.
+function slotValuesEqual(a, b) {
+  if (!a || !b) return false
+  if (String(a.units ?? '') !== String(b.units ?? '')) return false
+  const av = a.values || []
+  const bv = b.values || []
+  if (av.length !== bv.length) return false
+  for (let i = 0; i < av.length; i++) {
+    if (av[i] !== bv[i]) return false
+  }
+  return true
+}
+
 /**
  * Merge multiple parsed RDF payloads from the same model run into one logical
  * RDF object by unioning slots across files.
  *
+ * Duplicate slot keys are not an error: an identical copy (same units and
+ * values in every run) is dropped with a warning, while a conflicting copy is
+ * kept under a source-suffixed key (`Object.Slot [file.rdf]`) so the user can
+ * pick either version from the slot list.
+ *
  * @param {Array<{name:string, rdf:{ meta:object, runs:object[], warnings?:string[] }}>} inputs
- * @returns {{ rdf:{ meta:object, runs:object[], warnings:string[] }, slotSources:Record<string,string> }}
+ * @returns {{ rdf:{ meta:object, runs:object[], warnings:string[] },
+ *            slotSources:Record<string,string>,
+ *            duplicates:Array<{key:string, action:'ignored-identical'|'kept-both', files:string[]}> }}
  */
 export function mergeRdfs(inputs) {
   if (!Array.isArray(inputs) || inputs.length === 0) {
@@ -267,6 +288,7 @@ export function mergeRdfs(inputs) {
   for (const slotKey of Object.keys(base.runs[0]?.slots || {})) {
     slotSources[slotKey] = firstName
   }
+  const duplicates = []
 
   for (let fileIndex = 1; fileIndex < inputs.length; fileIndex++) {
     const { name, rdf } = inputs[fileIndex]
@@ -304,15 +326,57 @@ export function mergeRdfs(inputs) {
           )
         }
       }
-      for (const [slotKey, slot] of Object.entries(incomingRun.slots || {})) {
-        if (slotKey in expectedRun.slots) {
-          const prior = slotSources[slotKey] || firstName
-          throw new Error(
-            `Duplicate slot "${slotKey}" found in both "${prior}" and "${name}".`
-          )
+    }
+
+    // Resolve duplicate slot keys before merging. The decision must be made
+    // once per key (not per run) so the merged slots stay uniform across runs:
+    // identical everywhere → drop; any difference → keep both, with the
+    // incoming copy under a source-suffixed key.
+    const incomingKeys = new Set()
+    for (const run of rdf.runs) {
+      for (const slotKey of Object.keys(run.slots || {})) incomingKeys.add(slotKey)
+    }
+    const keyMap = {}
+    for (const slotKey of incomingKeys) {
+      if (!(slotKey in base.runs[0].slots)) {
+        keyMap[slotKey] = slotKey
+        continue
+      }
+      const prior = slotSources[slotKey] || firstName
+      const identical = base.runs.every((run, r) =>
+        slotValuesEqual(run.slots[slotKey], rdf.runs[r].slots?.[slotKey])
+      )
+      if (identical) {
+        keyMap[slotKey] = null
+        duplicates.push({ key: slotKey, action: 'ignored-identical', files: [prior, name] })
+        base.warnings.push(
+          `Slot "${slotKey}" in "${name}" is identical to the copy already loaded ` +
+          `from "${prior}"; the duplicate was ignored.`
+        )
+      } else {
+        let renamed = `${slotKey} [${name}]`
+        let n = 2
+        while (renamed in base.runs[0].slots) {
+          renamed = `${slotKey} [${name}] (${n})`
+          n += 1
         }
-        expectedRun.slots[slotKey] = slot
-        if (r === 0) slotSources[slotKey] = name
+        keyMap[slotKey] = renamed
+        duplicates.push({ key: slotKey, action: 'kept-both', files: [prior, name] })
+        base.warnings.push(
+          `Slot "${slotKey}" appears in both "${prior}" and "${name}" with different ` +
+          `values; both were kept — the copy from "${name}" is listed as "${renamed}".`
+        )
+      }
+    }
+
+    for (let r = 0; r < base.runs.length; r++) {
+      const expectedRun = base.runs[r]
+      const incomingRun = rdf.runs[r]
+      for (const [slotKey, slot] of Object.entries(incomingRun.slots || {})) {
+        const mapped = keyMap[slotKey]
+        if (mapped === null) continue
+        expectedRun.slots[mapped] = slot
+        if (!(mapped in slotSources)) slotSources[mapped] = name
       }
     }
     if (Array.isArray(rdf.warnings)) {
@@ -320,7 +384,7 @@ export function mergeRdfs(inputs) {
     }
   }
 
-  return { rdf: base, slotSources }
+  return { rdf: base, slotSources, duplicates }
 }
 
 // ---------------------------------------------------------------------------

@@ -32,6 +32,8 @@ export default function FileDropzone({
   onClassifications,
   classificationSchemeCount,
   hasData,
+  rdfFileNames = [],
+  onRemoveRdfFile,
   rdfSlots = [],
   selectedSlot = '',
   onSelectSlot,
@@ -162,7 +164,11 @@ export default function FileDropzone({
             Data file
           </span>
           <span className="text-ink">
-            {hasData ? 'Replace CSV, XLSX or RDF…' : 'Drop CSV, XLSX or RDF, or click to browse'}
+            {rdfFileNames.length > 0
+              ? 'Add more RDF files, or drop a CSV/XLSX to replace'
+              : hasData
+                ? 'Replace CSV, XLSX or RDF…'
+                : 'Drop CSV, XLSX or RDF, or click to browse'}
           </span>
         </div>
 
@@ -213,6 +219,32 @@ export default function FileDropzone({
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
       />
+
+      {rdfFileNames.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-rule flex flex-col gap-1">
+          <span className="font-mono uppercase tracking-wider text-[10px] text-muted">
+            Loaded RDF files
+          </span>
+          <ul className="flex flex-col gap-0.5">
+            {rdfFileNames.map((name) => (
+              <li
+                key={name}
+                className="flex items-center justify-between gap-2 font-mono text-[11px] text-ink"
+              >
+                <span className="truncate" title={name}>{name}</span>
+                <button
+                  onClick={() => onRemoveRdfFile?.(name)}
+                  aria-label={`Remove ${name}`}
+                  title={`Remove ${name}`}
+                  className="px-1 text-[10px] border border-rule hover:border-ink transition-colors"
+                >
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {rdfSlots.length > 0 && (
         <div className="mt-2 pt-2 border-t border-rule flex flex-col gap-1">
