@@ -10,6 +10,12 @@ function isRdf(file) {
   return /\.rdf$/i.test(file?.name || '')
 }
 
+/**
+ * Group RDF slot metadata by source filename.
+ *
+ * @param {Array<{source?:string}>} slots
+ * @returns {Record<string, Array<{source?:string}>>}
+ */
 function groupSlotsBySource(slots) {
   return slots.reduce((acc, slot) => {
     const sourceFile = slot.source || ''

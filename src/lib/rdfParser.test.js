@@ -282,7 +282,7 @@ describe('parseRdf — sample_subset.rdf', () => {
 })
 
 describe('mergeRdfs', () => {
-  function createMockRdfText({ slotName, values, times = ['2020-1-1 24:00', '2020-1-2 24:00'] }) {
+  function createMockRdfText({ slotName, values, times = ['2020-01-01 24:00', '2020-01-02 24:00'] }) {
     return [
       'name:x',
       'number_of_runs:1',
@@ -291,13 +291,13 @@ describe('mergeRdfs', () => {
       `time_steps:${times.length}`,
       'END_RUN_PREAMBLE',
       ...times,
-      'object_type: R',
-      'object_name: Reservoir',
-      'slot_type: SeriesSlot',
-      `slot_name: ${slotName}`,
+      'object_type:R',
+      'object_name:Reservoir',
+      'slot_type:SeriesSlot',
+      `slot_name:${slotName}`,
       'END_SLOT_PREAMBLE',
-      'units: cfs',
-      'scale: 1',
+      'units:cfs',
+      'scale:1',
       ...values.map(String),
       'END_COLUMN',
       'END_SLOT',
@@ -336,7 +336,7 @@ describe('mergeRdfs', () => {
     const b = parseRdf(createMockRdfText({
       slotName: 'Release',
       values: [3, 4],
-      times: ['2020-1-1 24:00', '2020-1-3 24:00'],
+      times: ['2020-01-01 24:00', '2020-01-03 24:00'],
     }))
     expect(() => mergeRdfs([
       { name: 'a.rdf', rdf: a },

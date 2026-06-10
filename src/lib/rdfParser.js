@@ -249,7 +249,7 @@ export function listSlots(rdf) {
  */
 export function mergeRdfs(inputs) {
   if (!Array.isArray(inputs) || inputs.length === 0) {
-    throw new Error('At least one RDF file is required.')
+    throw new Error('At least one RDF input is required.')
   }
 
   const [{ name: firstName, rdf: firstRdf }] = inputs
@@ -261,14 +261,14 @@ export function mergeRdfs(inputs) {
       times: [...(run.times || [])],
       slots: { ...(run.slots || {}) },
     })),
-    warnings: [],
+    warnings: Array.isArray(firstRdf.warnings) ? [...firstRdf.warnings] : [],
   }
   const slotSources = {}
   for (const slotKey of Object.keys(base.runs[0]?.slots || {})) {
     slotSources[slotKey] = firstName
   }
 
-  for (let fileIndex = 0; fileIndex < inputs.length; fileIndex++) {
+  for (let fileIndex = 1; fileIndex < inputs.length; fileIndex++) {
     const { name, rdf } = inputs[fileIndex]
     if (!rdf?.runs?.length) {
       throw new Error(`"${name}" contains no runs.`)
@@ -304,7 +304,6 @@ export function mergeRdfs(inputs) {
           )
         }
       }
-      if (fileIndex === 0) continue
       for (const [slotKey, slot] of Object.entries(incomingRun.slots || {})) {
         if (slotKey in expectedRun.slots) {
           const prior = slotSources[slotKey] || firstName
