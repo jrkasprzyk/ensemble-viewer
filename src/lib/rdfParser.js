@@ -275,7 +275,8 @@ export function mergeRdfs(inputs) {
     }
     if (rdf.runs.length !== base.runs.length) {
       throw new Error(
-        `RDF files are incompatible: "${name}" has ${rdf.runs.length} runs, expected ${base.runs.length}.`
+        `RDF files are incompatible: "${firstName}" has ${base.runs.length} runs but ` +
+        `"${name}" has ${rdf.runs.length}.`
       )
     }
     for (let r = 0; r < base.runs.length; r++) {

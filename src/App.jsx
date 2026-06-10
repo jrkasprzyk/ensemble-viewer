@@ -220,7 +220,7 @@ export default function App() {
       }
       const mergedName = rdfFiles.length === 1
         ? rdfFiles[0].name
-        : `${rdfFiles[0].name} (+${rdfFiles.length - 1} more RDF)`
+        : `${rdfFiles[0].name} (+${rdfFiles.length - 1} more RDF files)`
       setFile({ name: mergedName })
       setRdf(mergedRdf)
       setRdfSlots(seriesSlots)

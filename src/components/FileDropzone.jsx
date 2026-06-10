@@ -10,6 +10,15 @@ function isRdf(file) {
   return /\.rdf$/i.test(file?.name || '')
 }
 
+function groupSlotsBySource(slots) {
+  return slots.reduce((acc, slot) => {
+    const sourceFile = slot.source || ''
+    if (!acc[sourceFile]) acc[sourceFile] = []
+    acc[sourceFile].push(slot)
+    return acc
+  }, {})
+}
+
 export default function FileDropzone({
   onFile,
   onRdf,
@@ -93,7 +102,7 @@ export default function FileDropzone({
     const allFiles = Array.from(files)
     const rdfFiles = allFiles.filter(isRdf)
     if (rdfFiles.length && rdfFiles.length === allFiles.length && onRdf) {
-      onRdf(rdfFiles.length === 1 ? rdfFiles[0] : rdfFiles)
+      onRdf(rdfFiles)
     } else {
       const file = allFiles[0]
       onFile(file)
@@ -211,16 +220,9 @@ export default function FileDropzone({
             className="px-2 py-1.5 text-[11px] font-mono border border-rule bg-paper text-ink"
           >
             <option value="">Select a slot…</option>
-            {Object.entries(
-              rdfSlots.reduce((acc, slot) => {
-                const group = slot.source || ''
-                if (!acc[group]) acc[group] = []
-                acc[group].push(slot)
-                return acc
-              }, {})
-            ).map(([group, slots]) => (
-              group ? (
-                <optgroup key={group} label={group}>
+            {Object.entries(groupSlotsBySource(rdfSlots)).map(([sourceFile, slots]) => (
+              sourceFile ? (
+                <optgroup key={sourceFile} label={sourceFile}>
                   {slots.map((slot) => (
                     <option key={slot.key} value={slot.key}>
                       {slot.key}{slot.units ? ` (${slot.units})` : ''}

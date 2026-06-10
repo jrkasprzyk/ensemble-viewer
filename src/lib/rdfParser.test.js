@@ -282,7 +282,7 @@ describe('parseRdf — sample_subset.rdf', () => {
 })
 
 describe('mergeRdfs', () => {
-  function buildSingleSeriesRdf({ slotName, values, times = ['2020-1-1 24:00', '2020-1-2 24:00'] }) {
+  function createMockRdfText({ slotName, values, times = ['2020-1-1 24:00', '2020-1-2 24:00'] }) {
     return [
       'name:x',
       'number_of_runs:1',
@@ -307,8 +307,8 @@ describe('mergeRdfs', () => {
   }
 
   it('merges slots from multiple RDF files and tracks slot sources', () => {
-    const streamflow = parseRdf(buildSingleSeriesRdf({ slotName: 'Streamflow', values: [10, 11] }))
-    const releases = parseRdf(buildSingleSeriesRdf({ slotName: 'Release', values: [20, 21] }))
+    const streamflow = parseRdf(createMockRdfText({ slotName: 'Streamflow', values: [10, 11] }))
+    const releases = parseRdf(createMockRdfText({ slotName: 'Release', values: [20, 21] }))
     const merged = mergeRdfs([
       { name: 'streamflow.rdf', rdf: streamflow },
       { name: 'res.rdf', rdf: releases },
@@ -323,8 +323,8 @@ describe('mergeRdfs', () => {
   })
 
   it('throws on duplicate slot keys across files', () => {
-    const a = parseRdf(buildSingleSeriesRdf({ slotName: 'Flow', values: [1, 2] }))
-    const b = parseRdf(buildSingleSeriesRdf({ slotName: 'Flow', values: [3, 4] }))
+    const a = parseRdf(createMockRdfText({ slotName: 'Flow', values: [1, 2] }))
+    const b = parseRdf(createMockRdfText({ slotName: 'Flow', values: [3, 4] }))
     expect(() => mergeRdfs([
       { name: 'a.rdf', rdf: a },
       { name: 'b.rdf', rdf: b },
@@ -332,8 +332,8 @@ describe('mergeRdfs', () => {
   })
 
   it('throws when file timesteps do not align', () => {
-    const a = parseRdf(buildSingleSeriesRdf({ slotName: 'Flow', values: [1, 2] }))
-    const b = parseRdf(buildSingleSeriesRdf({
+    const a = parseRdf(createMockRdfText({ slotName: 'Flow', values: [1, 2] }))
+    const b = parseRdf(createMockRdfText({
       slotName: 'Release',
       values: [3, 4],
       times: ['2020-1-1 24:00', '2020-1-3 24:00'],
