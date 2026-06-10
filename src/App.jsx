@@ -12,6 +12,9 @@ import {
   seedActiveByCategory,
   parseSidecarLabels,
   parseClassificationBundle,
+  mergeClassificationBundles,
+  computeSchemeRenames,
+  renameBundleSchemes,
   applyClassificationMapping,
   summarizeLabels,
   tieLabelCategories,
@@ -46,6 +49,9 @@ export default function App() {
   const [labelsByColumn, setLabelsByColumn] = useState({})
   const [labelStrategy, setLabelStrategy] = useState('names')
   const [rawClassificationsByTrace, setRawClassificationsByTrace] = useState(null)
+  // File names of every classification upload this session, so later uploads
+  // derive scheme names with the same prefix/suffix context as earlier ones.
+  const classificationFileNamesRef = useRef([])
   const [labelRowCount, setLabelRowCount] = useState(0)
   const [delimiter, setDelimiter] = useState('_')
   const [categoriesText, setCategoriesText] = useState('')
@@ -113,6 +119,7 @@ export default function App() {
       forceFreshSeedRef.current = true
       setColorBy(null)
       setRawClassificationsByTrace(null)
+      classificationFileNamesRef.current = []
       setSelectedHorizons(new Set())
       setHorizonLogic('OR')
       setBundledFilter(new Set(['Failure', 'Success']))
@@ -270,8 +277,37 @@ export default function App() {
   async function loadClassifications(files) {
     setError(null)
     try {
-      const raw = await parseClassificationBundle(files)
-      setRawClassificationsByTrace(raw)
+      const prior = classificationFileNamesRef.current
+      const newNames = files.map((f) => f.name)
+      const raw = await parseClassificationBundle(files, prior)
+      // Re-derive-all invariant: scheme names always match what one combined
+      // upload would produce, so adding files can rename existing schemes
+      // (e.g. "run_flood" → "flood" once "run_fire.txt" joins the context).
+      const renames = computeSchemeRenames(prior, newNames)
+      const renamed = renameBundleSchemes(rawClassificationsByTrace, renames)
+      // Merge before dispatch: mergeClassificationBundles throws on duplicate
+      // scheme names, and a throw inside a setState updater would escape this
+      // try/catch (React runs deferred updaters during render).
+      const merged = mergeClassificationBundles(renamed, raw)
+      setRawClassificationsByTrace(merged)
+      // Remap view state keyed on the old scheme names so the rename is
+      // invisible: same coloring/sort/filters, new labels.
+      if (Object.keys(renames).length) {
+        const remap = (v) => (v && renames[v]) || v
+        setColorBy(remap)
+        setSortCategory(remap)
+        setSplitBy(remap)
+        setTieCategoryA(remap)
+        setTieCategoryB(remap)
+        const remapKeys = (obj) => {
+          const out = {}
+          for (const [k, v] of Object.entries(obj)) out[remap(k)] = v
+          return out
+        }
+        setActiveByCategory(remapKeys)
+        prevCategoryValuesRef.current = remapKeys(prevCategoryValuesRef.current)
+      }
+      classificationFileNamesRef.current = [...prior, ...newNames]
     } catch (e) {
       setError(e.message || String(e))
     }
@@ -302,14 +338,18 @@ export default function App() {
 
   // --- Derived state -----------------------------------------------------
 
-  const classificationSchemeCount = useMemo(() => {
-    if (!rawClassificationsByTrace) return 0
+  // Union across all traces: merged bundles can cover different trace sets per
+  // scheme, so no single trace is guaranteed to list every scheme.
+  const classificationSchemeNames = useMemo(() => {
+    if (!rawClassificationsByTrace) return []
     const allKeys = new Set()
     for (const schemes of Object.values(rawClassificationsByTrace)) {
       for (const key of Object.keys(schemes)) allKeys.add(key)
     }
-    return allKeys.size
+    return [...allKeys].sort()
   }, [rawClassificationsByTrace])
+
+  const classificationSchemeCount = classificationSchemeNames.length
 
   const classificationLabels = useMemo(() => {
     if (!rawClassificationsByTrace || !columns.length) return null
@@ -325,12 +365,6 @@ export default function App() {
   useEffect(() => {
     if (!selectedHorizons.size && colorBy === BUNDLED_CATEGORY) setColorBy(null)
   }, [selectedHorizons, colorBy])
-
-  const classificationSchemeNames = useMemo(() => {
-    if (!rawClassificationsByTrace) return []
-    const first = Object.values(rawClassificationsByTrace)[0] || {}
-    return Object.keys(first)
-  }, [rawClassificationsByTrace])
 
   const mergedLabelsByColumn = useMemo(() => {
     if (!labelsByColumn || !selectedHorizons.size) return labelsByColumn
@@ -757,7 +791,7 @@ export default function App() {
 
         <section className="p-3 min-h-0">
           {rows.length === 0 ? (
-            <EmptyState />
+            <EmptyState awaitingSlot={rdfSlots.length > 0} />
           ) : (
             <Suspense fallback={<div>Loading plot…</div>}>
               <div className="h-full overflow-y-auto flex flex-col gap-3">
@@ -806,7 +840,21 @@ function parseCategoriesText(text) {
     .filter(Boolean)
 }
 
-function EmptyState() {
+function EmptyState({ awaitingSlot = false }) {
+  if (awaitingSlot) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="max-w-md text-center">
+          <h2 className="font-display text-2xl font-light mb-3">Choose a series slot to begin</h2>
+          <p className="text-sm text-muted leading-relaxed">
+            The RDF file is loaded. Pick a series slot from the dropdown on the
+            left to plot it — each slot is a variable recorded across the
+            ensemble. Classification files can be attached at any point.
+          </p>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="h-full flex items-center justify-center">
       <div className="max-w-md text-center">

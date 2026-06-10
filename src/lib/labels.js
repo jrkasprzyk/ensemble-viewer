@@ -382,12 +382,22 @@ export function deriveSchemeNames(fileNames) {
  * Parse a bundle of classification `.txt` files (CSV format `"TraceNumber","Class"`).
  * Returns a raw map keyed by string trace number.
  *
+ * `priorFileNames` holds file names from earlier uploads in the same session.
+ * Scheme names are derived with those in context, keeping the invariant that
+ * names always match what one combined upload of every file would produce
+ * (e.g. adding "run_fire.txt" after ["run_flood.txt", "run_drought.txt"]
+ * yields "fire", not "run_fire"). The caller renames previously loaded
+ * schemes to the same full-context derivation via `computeSchemeRenames` +
+ * `renameBundleSchemes`.
+ *
  * @param {File[]} files
+ * @param {string[]} [priorFileNames]
  * @returns {Promise<Record<string, Record<string, string>>>}
  */
-export async function parseClassificationBundle(files) {
+export async function parseClassificationBundle(files, priorFileNames = []) {
   const Papa = (await import('papaparse')).default
-  const schemeNames = deriveSchemeNames(files.map((f) => f.name))
+  const allNames = [...priorFileNames, ...files.map((f) => f.name)]
+  const schemeNames = deriveSchemeNames(allNames).slice(priorFileNames.length)
   const seenNames = new Set()
   for (const name of schemeNames) {
     if (seenNames.has(name))
@@ -419,6 +429,87 @@ export async function parseClassificationBundle(files) {
   }
 
   return rawByTraceNum
+}
+
+/**
+ * Compute how previously assigned scheme names change when new files join the
+ * derivation context. Prior names are always `deriveSchemeNames(priorFileNames)`
+ * (the re-derive-all invariant holds inductively across uploads); the new
+ * names are the same positions in the full-context derivation.
+ *
+ * Returns a map of oldName → newName containing only names that change.
+ * Returns an empty map (skip renaming) when the full-context derivation would
+ * collide two prior names — the merge duplicate guard then reports any
+ * resulting conflict instead of silently dropping a scheme.
+ *
+ * @param {string[]} priorFileNames
+ * @param {string[]} newFileNames
+ * @returns {Record<string, string>}
+ */
+export function computeSchemeRenames(priorFileNames, newFileNames) {
+  if (!priorFileNames.length) return {}
+  const before = deriveSchemeNames(priorFileNames)
+  const after = deriveSchemeNames([...priorFileNames, ...newFileNames]).slice(0, priorFileNames.length)
+  if (new Set(after).size !== after.length) return {}
+  const renames = {}
+  for (let i = 0; i < before.length; i++) {
+    if (before[i] !== after[i]) renames[before[i]] = after[i]
+  }
+  return renames
+}
+
+/**
+ * Return a copy of a raw classification bundle with scheme keys renamed.
+ * Unmapped keys pass through; returns the input unchanged when there is
+ * nothing to rename.
+ *
+ * @param {Record<string, Record<string, string>> | null} rawByTraceNum
+ * @param {Record<string, string>} renames oldName → newName
+ * @returns {Record<string, Record<string, string>> | null}
+ */
+export function renameBundleSchemes(rawByTraceNum, renames) {
+  if (!rawByTraceNum || !Object.keys(renames).length) return rawByTraceNum
+  const out = {}
+  for (const [trace, schemes] of Object.entries(rawByTraceNum)) {
+    const next = {}
+    for (const [key, val] of Object.entries(schemes)) {
+      next[renames[key] ?? key] = val
+    }
+    out[trace] = next
+  }
+  return out
+}
+
+/**
+ * Merge a newly parsed classification bundle into an existing one.
+ * Throws when a scheme name already exists to prevent silent overwrite.
+ *
+ * @param {Record<string, Record<string, string>> | null} existingRawByTraceNum
+ * @param {Record<string, Record<string, string>>} nextRawByTraceNum
+ * @returns {Record<string, Record<string, string>>}
+ */
+export function mergeClassificationBundles(existingRawByTraceNum, nextRawByTraceNum) {
+  if (!existingRawByTraceNum) return nextRawByTraceNum
+
+  const existingSchemes = new Set()
+  for (const schemes of Object.values(existingRawByTraceNum)) {
+    for (const key of Object.keys(schemes)) existingSchemes.add(key)
+  }
+  for (const schemes of Object.values(nextRawByTraceNum)) {
+    for (const key of Object.keys(schemes)) {
+      if (existingSchemes.has(key))
+        throw new Error(`Scheme "${key}" is already loaded. Rename the file, or reload the data file to start over.`)
+    }
+  }
+
+  const merged = {}
+  for (const [trace, schemes] of Object.entries(existingRawByTraceNum)) {
+    merged[trace] = { ...schemes }
+  }
+  for (const [trace, schemes] of Object.entries(nextRawByTraceNum)) {
+    merged[trace] = { ...(merged[trace] || {}), ...schemes }
+  }
+  return merged
 }
 
 /**

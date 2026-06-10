@@ -12,6 +12,9 @@ import {
   buildVisibleColumnSet,
   deriveSchemeNames,
   parseClassificationBundle,
+  mergeClassificationBundles,
+  computeSchemeRenames,
+  renameBundleSchemes,
   applyClassificationMapping,
   buildBundledLabels,
   BUNDLED_CATEGORY,
@@ -428,6 +431,81 @@ describe('parseClassificationBundle', () => {
     const f = fakeFile('scheme.txt', '"TraceNumber","Label"\n1,Success\n')
     await expect(parseClassificationBundle([f])).rejects.toThrow(
       'Classification file "scheme.txt" is missing column \'Class\''
+    )
+  })
+
+  it('derives a later single-file upload name in the context of prior file names', async () => {
+    const f = fakeFile('prefix_C.txt', '"TraceNumber","Class"\n1,Success\n')
+    const result = await parseClassificationBundle([f], ['prefix_A.txt', 'prefix_B.txt'])
+    expect(result['1']).toEqual({ C: 'Success' })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// computeSchemeRenames / renameBundleSchemes
+// ---------------------------------------------------------------------------
+describe('computeSchemeRenames', () => {
+  it('renames a full-base-name first upload once a second file gives context', () => {
+    expect(computeSchemeRenames(['run_flood.txt'], ['run_fire.txt'])).toEqual({
+      run_flood: 'flood',
+    })
+  })
+
+  it('returns empty map when prior names are unchanged by the new context', () => {
+    expect(
+      computeSchemeRenames(['prefix_A.txt', 'prefix_B.txt'], ['prefix_C.txt'])
+    ).toEqual({})
+  })
+
+  it('returns empty map when there are no prior files', () => {
+    expect(computeSchemeRenames([], ['run_fire.txt'])).toEqual({})
+  })
+})
+
+describe('renameBundleSchemes', () => {
+  it('renames scheme keys across every trace, passing unmapped keys through', () => {
+    const raw = {
+      '1': { run_flood: 'Success', other: 'Failure' },
+      '2': { run_flood: 'Failure' },
+    }
+    expect(renameBundleSchemes(raw, { run_flood: 'flood' })).toEqual({
+      '1': { flood: 'Success', other: 'Failure' },
+      '2': { flood: 'Failure' },
+    })
+  })
+
+  it('returns input unchanged for a null bundle or empty rename map', () => {
+    expect(renameBundleSchemes(null, { a: 'b' })).toBeNull()
+    const raw = { '1': { A: 'Success' } }
+    expect(renameBundleSchemes(raw, {})).toBe(raw)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// mergeClassificationBundles
+// ---------------------------------------------------------------------------
+describe('mergeClassificationBundles', () => {
+  it('adds newly loaded schemes on top of existing bundle data', () => {
+    const existing = {
+      '1': { A: 'Success' },
+      '2': { A: 'Failure' },
+    }
+    const next = {
+      '1': { B: 'Failure' },
+      '3': { B: 'Success' },
+    }
+    expect(mergeClassificationBundles(existing, next)).toEqual({
+      '1': { A: 'Success', B: 'Failure' },
+      '2': { A: 'Failure' },
+      '3': { B: 'Success' },
+    })
+  })
+
+  it('throws when adding a scheme name that is already loaded', () => {
+    const existing = { '1': { A: 'Success' } }
+    const next = { '1': { A: 'Failure' } }
+    expect(() => mergeClassificationBundles(existing, next)).toThrow(
+      'Scheme "A" is already loaded. Rename the file, or reload the data file to start over.'
     )
   })
 })
