@@ -24,6 +24,8 @@ import {
   BUNDLED_CATEGORY,
 } from './lib/labels.js'
 import { buildColorMap, buildSequentialColorMap, BUNDLED_COLOR_MAP } from './lib/palette.js'
+import { fetchRemoteFile } from './lib/sampleData.js'
+import { getSharedDatasetUrl, syncSharedDatasetUrl } from './lib/shareUrl.js'
 import { DEFAULT_STYLE_MULTIPLIER, resolveLineStyling } from './lib/plotStyle.js'
 import { deriveYAxisLabel, formatSlotLabel } from './lib/slotLabels.js'
 import ConfigControls from './components/ConfigControls.jsx'
@@ -169,7 +171,9 @@ export default function App() {
         ? await parseXlsxFile(f, { labelRowCount: lrc })
         : await parseCsvFile(f, { labelRowCount: lrc })
       setFile(f)
-      setSourcePath(resolveSourcePath(f, nextSourcePath))
+      const resolvedSourcePath = resolveSourcePath(f, nextSourcePath)
+      setSourcePath(resolvedSourcePath)
+      syncSharedDatasetUrl(resolvedSourcePath)
       setRdf(null)
       setRdfSlots([])
       setSelectedSlot('')
@@ -199,7 +203,9 @@ export default function App() {
         throw new Error('No series slots found in this RDF file.')
       }
       setFile(f)
-      setSourcePath(resolveSourcePath(f, nextSourcePath))
+      const resolvedSourcePath = resolveSourcePath(f, nextSourcePath)
+      setSourcePath(resolvedSourcePath)
+      syncSharedDatasetUrl(resolvedSourcePath)
       setRdf(parsedRdf)
       setRdfSlots(seriesSlots)
       setSelectedSlot('')
@@ -218,6 +224,33 @@ export default function App() {
       setStatus('')
     }
   }
+
+  // Shareable links: ?url=<dataset URL> auto-loads a web-hosted file on
+  // startup, e.g. https://viewer.example/?url=https://cdn.example/res.rdf.
+  // The ref guards against StrictMode's mount → unmount → remount double-run
+  // (and any re-render) so the file is fetched exactly once.
+  const autoLoadedUrlRef = useRef(false)
+  useEffect(() => {
+    if (autoLoadedUrlRef.current) return
+    autoLoadedUrlRef.current = true
+    const sharedUrl = getSharedDatasetUrl()
+    if (!sharedUrl) return
+    ;(async () => {
+      setStatus(`Fetching ${sharedUrl}…`)
+      try {
+        const f = await fetchRemoteFile(sharedUrl)
+        if (/\.rdf$/i.test(f.name)) {
+          await loadRdf(f, { sourcePath: sharedUrl })
+        } else {
+          await loadFile(f, { sourcePath: sharedUrl })
+        }
+      } catch (e) {
+        console.error(e)
+        setError(e.message || String(e))
+        setStatus('')
+      }
+    })()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function selectRdfSlot(slotKey) {
     if (!rdf || !slotKey) return
