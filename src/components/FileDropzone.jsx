@@ -90,10 +90,12 @@ export default function FileDropzone({
 
   function handleFiles(files) {
     if (!files || !files.length) return
-    const file = files[0]
-    if (isRdf(file) && onRdf) {
-      onRdf(file)
+    const allFiles = Array.from(files)
+    const rdfFiles = allFiles.filter(isRdf)
+    if (rdfFiles.length && rdfFiles.length === allFiles.length && onRdf) {
+      onRdf(rdfFiles.length === 1 ? rdfFiles[0] : rdfFiles)
     } else {
+      const file = allFiles[0]
       onFile(file)
     }
     if (inputRef.current) inputRef.current.value = ''
@@ -192,6 +194,7 @@ export default function FileDropzone({
         ref={inputRef}
         type="file"
         accept=".csv,.tsv,.xlsx,.xls,.rdf"
+        multiple
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
       />
@@ -208,10 +211,29 @@ export default function FileDropzone({
             className="px-2 py-1.5 text-[11px] font-mono border border-rule bg-paper text-ink"
           >
             <option value="">Select a slot…</option>
-            {rdfSlots.map((slot) => (
-              <option key={slot.key} value={slot.key}>
-                {slot.key}{slot.units ? ` (${slot.units})` : ''}
-              </option>
+            {Object.entries(
+              rdfSlots.reduce((acc, slot) => {
+                const group = slot.source || ''
+                if (!acc[group]) acc[group] = []
+                acc[group].push(slot)
+                return acc
+              }, {})
+            ).map(([group, slots]) => (
+              group ? (
+                <optgroup key={group} label={group}>
+                  {slots.map((slot) => (
+                    <option key={slot.key} value={slot.key}>
+                      {slot.key}{slot.units ? ` (${slot.units})` : ''}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : (
+                slots.map((slot) => (
+                  <option key={slot.key} value={slot.key}>
+                    {slot.key}{slot.units ? ` (${slot.units})` : ''}
+                  </option>
+                ))
+              )
             ))}
           </select>
         </div>

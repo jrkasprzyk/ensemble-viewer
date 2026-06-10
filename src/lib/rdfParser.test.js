@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { parseRdf, listSlots, rdfToDataset, normalizeTimestamp } from './rdfParser.js'
+import { parseRdf, listSlots, rdfToDataset, normalizeTimestamp, mergeRdfs } from './rdfParser.js'
 import { parseCsvFile } from './parseCsv.js'
 
 // Resolve the shared sample fixtures (also used by the Python suite, GUD-002).
@@ -278,5 +278,69 @@ describe('parseRdf — sample_subset.rdf', () => {
     expect(ds.columns).toEqual(['trace_1', 'trace_2'])
     expect(ds.rows).toHaveLength(4)
     expect(ds.indexColumn).toBe('date')
+  })
+})
+
+describe('mergeRdfs', () => {
+  function buildSingleSeriesRdf({ slotName, values, times = ['2020-1-1 24:00', '2020-1-2 24:00'] }) {
+    return [
+      'name:x',
+      'number_of_runs:1',
+      'END_PACKAGE_PREAMBLE',
+      'trace:1',
+      `time_steps:${times.length}`,
+      'END_RUN_PREAMBLE',
+      ...times,
+      'object_type: R',
+      'object_name: Reservoir',
+      'slot_type: SeriesSlot',
+      `slot_name: ${slotName}`,
+      'END_SLOT_PREAMBLE',
+      'units: cfs',
+      'scale: 1',
+      ...values.map(String),
+      'END_COLUMN',
+      'END_SLOT',
+      'END_RUN',
+      '',
+    ].join('\n')
+  }
+
+  it('merges slots from multiple RDF files and tracks slot sources', () => {
+    const streamflow = parseRdf(buildSingleSeriesRdf({ slotName: 'Streamflow', values: [10, 11] }))
+    const releases = parseRdf(buildSingleSeriesRdf({ slotName: 'Release', values: [20, 21] }))
+    const merged = mergeRdfs([
+      { name: 'streamflow.rdf', rdf: streamflow },
+      { name: 'res.rdf', rdf: releases },
+    ])
+    expect(Object.keys(merged.rdf.runs[0].slots).sort()).toEqual(
+      ['Reservoir.Release', 'Reservoir.Streamflow']
+    )
+    expect(merged.slotSources).toEqual({
+      'Reservoir.Streamflow': 'streamflow.rdf',
+      'Reservoir.Release': 'res.rdf',
+    })
+  })
+
+  it('throws on duplicate slot keys across files', () => {
+    const a = parseRdf(buildSingleSeriesRdf({ slotName: 'Flow', values: [1, 2] }))
+    const b = parseRdf(buildSingleSeriesRdf({ slotName: 'Flow', values: [3, 4] }))
+    expect(() => mergeRdfs([
+      { name: 'a.rdf', rdf: a },
+      { name: 'b.rdf', rdf: b },
+    ])).toThrow(/Duplicate slot/)
+  })
+
+  it('throws when file timesteps do not align', () => {
+    const a = parseRdf(buildSingleSeriesRdf({ slotName: 'Flow', values: [1, 2] }))
+    const b = parseRdf(buildSingleSeriesRdf({
+      slotName: 'Release',
+      values: [3, 4],
+      times: ['2020-1-1 24:00', '2020-1-3 24:00'],
+    }))
+    expect(() => mergeRdfs([
+      { name: 'a.rdf', rdf: a },
+      { name: 'b.rdf', rdf: b },
+    ])).toThrow(/incompatible/)
   })
 })

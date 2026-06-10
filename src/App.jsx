@@ -5,7 +5,7 @@ import LabelControls from './components/LabelControls.jsx'
 const EnsemblePlot = lazy(() => import('./components/EnsemblePlot.jsx'))
 import { parseCsvFile } from './lib/parseCsv.js'
 import { parseXlsxFile } from './lib/parseXlsx.js'
-import { parseRdf, listSlots, rdfToDataset } from './lib/rdfParser.js'
+import { parseRdf, listSlots, rdfToDataset, mergeRdfs } from './lib/rdfParser.js'
 import { datasetToWideCsv, datasetToStackedCsv } from './lib/csvExport.js'
 import {
   parseLabelsFromNames,
@@ -190,18 +190,39 @@ export default function App() {
 
   // RDF flow (TASK-019): read text → parseRdf → store; the user then picks a
   // series slot which converts to a dataset via the shared applyDataset path.
-  async function loadRdf(f) {
+  async function loadRdf(filesOrFile) {
+    const rdfFiles = Array.isArray(filesOrFile) ? filesOrFile : [filesOrFile]
+    if (!rdfFiles.length) return
     setError(null)
-    setStatus(`Parsing ${f.name}…`)
+    setStatus(
+      rdfFiles.length === 1
+        ? `Parsing ${rdfFiles[0].name}…`
+        : `Parsing ${rdfFiles.length} RDF files…`
+    )
     try {
-      const text = await f.text()
-      const parsedRdf = parseRdf(text)
-      const seriesSlots = listSlots(parsedRdf).filter((s) => s.scalar === false)
-      if (!seriesSlots.length) {
-        throw new Error('No series slots found in this RDF file.')
+      const parsedInputs = []
+      for (const f of rdfFiles) {
+        const text = await f.text()
+        let parsedRdf
+        try {
+          parsedRdf = parseRdf(text)
+        } catch (e) {
+          throw new Error(`Failed to parse ${f.name}: ${e.message || String(e)}`)
+        }
+        parsedInputs.push({ name: f.name, rdf: parsedRdf })
       }
-      setFile(f)
-      setRdf(parsedRdf)
+      const { rdf: mergedRdf, slotSources } = mergeRdfs(parsedInputs)
+      const seriesSlots = listSlots(mergedRdf)
+        .filter((s) => s.scalar === false)
+        .map((s) => ({ ...s, source: slotSources[s.key] || '' }))
+      if (!seriesSlots.length) {
+        throw new Error('No series slots found in the selected RDF file(s).')
+      }
+      const mergedName = rdfFiles.length === 1
+        ? rdfFiles[0].name
+        : `${rdfFiles[0].name} (+${rdfFiles.length - 1} more RDF)`
+      setFile({ name: mergedName })
+      setRdf(mergedRdf)
       setRdfSlots(seriesSlots)
       setSelectedSlot('')
       // Fresh load: drop any prior filter selection (REQ-002). The first slot
@@ -212,7 +233,11 @@ export default function App() {
       // Clear any previously loaded dataset until a slot is chosen.
       setRows([])
       setColumns([])
-      setStatus(`Parsed ${f.name}: ${seriesSlots.length} series slot(s) — pick one to view`)
+      setStatus(
+        rdfFiles.length === 1
+          ? `Parsed ${rdfFiles[0].name}: ${seriesSlots.length} series slot(s) — pick one to view`
+          : `Parsed ${rdfFiles.length} RDF files: ${seriesSlots.length} series slot(s) — pick one to view`
+      )
     } catch (e) {
       console.error(e)
       setError(e.message || String(e))

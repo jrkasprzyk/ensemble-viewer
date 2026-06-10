@@ -240,6 +240,89 @@ export function listSlots(rdf) {
   }))
 }
 
+/**
+ * Merge multiple parsed RDF payloads from the same model run into one logical
+ * RDF object by unioning slots across files.
+ *
+ * @param {Array<{name:string, rdf:{ meta:object, runs:object[], warnings?:string[] }}>} inputs
+ * @returns {{ rdf:{ meta:object, runs:object[], warnings:string[] }, slotSources:Record<string,string> }}
+ */
+export function mergeRdfs(inputs) {
+  if (!Array.isArray(inputs) || inputs.length === 0) {
+    throw new Error('At least one RDF file is required.')
+  }
+
+  const [{ name: firstName, rdf: firstRdf }] = inputs
+  const base = {
+    meta: { ...(firstRdf.meta || {}) },
+    runs: firstRdf.runs.map((run) => ({
+      ...run,
+      preamble: { ...(run.preamble || {}) },
+      times: [...(run.times || [])],
+      slots: { ...(run.slots || {}) },
+    })),
+    warnings: [],
+  }
+  const slotSources = {}
+  for (const slotKey of Object.keys(base.runs[0]?.slots || {})) {
+    slotSources[slotKey] = firstName
+  }
+
+  for (let fileIndex = 0; fileIndex < inputs.length; fileIndex++) {
+    const { name, rdf } = inputs[fileIndex]
+    if (!rdf?.runs?.length) {
+      throw new Error(`"${name}" contains no runs.`)
+    }
+    if (rdf.runs.length !== base.runs.length) {
+      throw new Error(
+        `RDF files are incompatible: "${name}" has ${rdf.runs.length} runs, expected ${base.runs.length}.`
+      )
+    }
+    for (let r = 0; r < base.runs.length; r++) {
+      const expectedRun = base.runs[r]
+      const incomingRun = rdf.runs[r]
+      const expectedTrace = String(expectedRun.preamble?.trace ?? r + 1)
+      const incomingTrace = String(incomingRun.preamble?.trace ?? r + 1)
+      if (expectedTrace !== incomingTrace) {
+        throw new Error(
+          `RDF files are incompatible: run ${r + 1} trace id ${incomingTrace} in "${name}" ` +
+          `does not match ${expectedTrace}.`
+        )
+      }
+      if (incomingRun.times.length !== expectedRun.times.length) {
+        throw new Error(
+          `RDF files are incompatible: run ${r + 1} in "${name}" has ${incomingRun.times.length} ` +
+          `timesteps, expected ${expectedRun.times.length}.`
+        )
+      }
+      for (let t = 0; t < expectedRun.times.length; t++) {
+        if (incomingRun.times[t] !== expectedRun.times[t]) {
+          throw new Error(
+            `RDF files are incompatible: run ${r + 1} timestep ${t + 1} in "${name}" ` +
+            `(${incomingRun.times[t]}) does not match ${expectedRun.times[t]}.`
+          )
+        }
+      }
+      if (fileIndex === 0) continue
+      for (const [slotKey, slot] of Object.entries(incomingRun.slots || {})) {
+        if (slotKey in expectedRun.slots) {
+          const prior = slotSources[slotKey] || firstName
+          throw new Error(
+            `Duplicate slot "${slotKey}" found in both "${prior}" and "${name}".`
+          )
+        }
+        expectedRun.slots[slotKey] = slot
+        if (r === 0) slotSources[slotKey] = name
+      }
+    }
+    if (Array.isArray(rdf.warnings)) {
+      base.warnings.push(...rdf.warnings)
+    }
+  }
+
+  return { rdf: base, slotSources }
+}
+
 // ---------------------------------------------------------------------------
 // rdfToDataset — TASK-017 / DR-01 / DR-02 / DR-03
 // ---------------------------------------------------------------------------

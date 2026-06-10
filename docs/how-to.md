@@ -18,10 +18,11 @@ Stacked label rows above the data are detected automatically. If the detection i
 
 The viewer reads [RiverWare `.rdf` files](https://riverware.org/HelpSystem/CurrentVersion/index.html#page/OutputVisual/Output_RDF.11.1.html) directly. Unlike a CSV or Excel file, an `.rdf` file is not one table — it can contain many **slots**, each its own ensemble — so loading it takes one extra step: choosing which slot to plot.
 
-1. Drag an `.rdf` file onto the page (or **Browse** to it). The viewer parses it and reports how many **series slots** it found.
-2. An **RDF series slot** dropdown appears. Pick the slot you want to view. The viewer converts that slot to a dataset and plots it.
-3. Switch slots at any time from the same dropdown. Your filters and colour grouping are preserved across slots of the same file, because every slot shares the same set of traces.
-4. To save the current slot as a file, use the **Download CSV** buttons:
+1. Drag one or more `.rdf` files onto the page (or **Browse** to select them). If you select multiple RDF files, they must come from the same model run (same traces and timesteps).
+2. The viewer parses the selected RDF file(s) and reports how many combined **series slots** it found.
+3. An **RDF series slot** dropdown appears. Pick the slot you want to view. Slots are grouped by source file, but all slots are available in one combined list.
+4. Switch slots at any time from the same dropdown. Your filters and colour grouping are preserved across slots of the same RDF load, because every slot shares the same set of traces.
+5. To save the current slot as a file, use the **Download CSV** buttons:
    - **Wide** — rows are timesteps, columns are traces.
    - **Stacked** — the same data with any scalar slot values written as label header rows on top, which the viewer auto-detects on re-load.
 
