@@ -4,30 +4,34 @@ This tutorial walks you through Ensemble Viewer from a cold start to reading a p
 
 Allow about ten minutes.
 
-## Before you start (for using locally)
+## Step 1 — Open the app
 
-To run locally, you need [Node.js](https://nodejs.org/) v18 or later. Confirm it is installed:
+There are two ways to open Ensemble Viewer. Pick whichever suits you — every later step is identical.
+
+### Option A: Use the deployed app (nothing to install)
+
+Visit <https://ensemble-viewer.vercel.app/> in your browser.
+
+### Option B: Run it locally
+
+You need [Node.js](https://nodejs.org/) v18 or later. Confirm it is installed:
 
 ```bash
 node --version
 ```
 
-If that prints a version of `v18` or higher, you are ready.
-
-## Step 1 — Start the app (locally)
-
-From the project folder, install dependencies once and start the development server:
+If that prints `v18` or higher, you are ready. From the project folder, install dependencies once and start the development server:
 
 ```bash
 npm install
 npm run dev
 ```
 
-The terminal prints a local URL. Open <http://localhost:5173> in your browser. You will see the **Ensemble Viewer** header, an empty plot area that says *Drop a file to begin*, and a control panel on the left with a **Data file** drop zone.
+The terminal prints a local URL. Open <http://localhost:5173> in your browser.
 
-## Step 1 -- Load the app in a browser (for online users)
+### What you should see
 
-Visit [https://ensemble-viewer.vercel.app/](https://ensemble-viewer.vercel.app/) in your browser. All subsequent steps are the same.
+Either way, the page shows the **Ensemble Viewer** header, an empty plot area that says *Drop a file to begin*, and a control panel on the left with a **Data file** drop zone.
 
 ## Step 2 — Load an example dataset
 
@@ -65,7 +69,7 @@ If you turn colouring off, the band disappears — bands are computed per colour
 
 ## What you have learned
 
-You started the app, loaded a real ensemble from the Examples dropdown, filtered traces by label, coloured them by a classification scheme, and read a percentile band. That is the core loop of Ensemble Viewer.
+You opened the app, loaded a real ensemble from the Examples dropdown, filtered traces by label, coloured them by a classification scheme, and read a percentile band. That is the core loop of Ensemble Viewer.
 
 ## Where to go next
 

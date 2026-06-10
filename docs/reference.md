@@ -9,7 +9,12 @@ Ensemble Viewer expects a **wide** timeseries table:
 - **First column** — a time or index column (numeric or date-like values). Used as the x-axis.
 - **Remaining columns** — one column per ensemble member / trace. Each is plotted as a line.
 
-Accepted file types: `.csv`, `.tsv`, `.xlsx`, `.xls`, and RiverWare `.rdf` (see [RDF support](#riverware-rdf-support)).
+Accepted file types:
+
+| Type | Extensions | Behaviour on load |
+|---|---|---|
+| Tabular | `.csv`, `.tsv`, `.xlsx`, `.xls` | The file *is* the wide table; plotted immediately |
+| RiverWare RDF | `.rdf` | A container of slots; you select a series slot, which the viewer converts into a wide table (see [RDF support](#riverware-rdf-support)) |
 
 ### Labelling strategies
 
@@ -69,6 +74,8 @@ RiverWare `.rdf` ensemble files can be opened directly in the browser:
 For offline, scriptable, or batch conversion, the `scripts/` directory contains a Python 3.12+ CLI (stdlib only). See **[scripts/README.md](../scripts/README.md)** for the full command reference (`info`, `slots`, `convert`, and the wide/stacked/long/enriched output formats).
 
 ## npm commands
+
+These commands apply only when running the viewer from source. The deployed app at <https://ensemble-viewer.vercel.app/> requires none of them.
 
 | Command | What it does |
 |---|---|

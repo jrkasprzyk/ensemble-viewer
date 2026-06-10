@@ -8,7 +8,7 @@ This document discusses the design choices behind Ensemble Viewer. For instructi
 
 Ensemble Viewer has no server-side processing. Files you open are parsed and rendered locally in your browser; nothing is uploaded. This has three consequences worth understanding:
 
-- **Privacy and simplicity.** Your data never leaves your machine, and there is no backend to deploy, scale, or secure. The production build is a static site that can be hosted anywhere.
+- **Privacy and simplicity.** Your data never leaves your machine, and there is no backend to deploy, scale, or secure. The production build is a static site that can be hosted anywhere — the deployed app at <https://ensemble-viewer.vercel.app/> is exactly such a static copy, so even there your files are parsed locally and never uploaded.
 - **RDF parsing happens in JavaScript.** RiverWare `.rdf` files are read by an in-browser parser. The repo contains standalone Python scripts for offline and batch use, but the viewer does not depend on them.
 - **Browser memory is the ceiling.** Because everything is in memory, very large ensembles are bounded by what the tab can hold rather than by server resources.
 

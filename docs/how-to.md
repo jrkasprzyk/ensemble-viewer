@@ -1,6 +1,11 @@
 # How-to guides
 
-Each section below is a self-contained recipe for one task. They assume the app is already running (`npm run dev`, then <http://localhost:5173>). For a guided introduction, start with the [tutorial](tutorial.md); for exact format specifications, see the [reference](reference.md).
+Each section below is a self-contained recipe for one task. They assume the app is already open in your browser — either the deployed app at <https://ensemble-viewer.vercel.app/> or a local development server (`npm run dev`, then <http://localhost:5173>). For a guided introduction, start with the [tutorial](tutorial.md); for exact format specifications, see the [reference](reference.md).
+
+The viewer accepts two kinds of data file, and they behave differently on load:
+
+- **Tabular files** (`.csv`, `.tsv`, `.xlsx`, `.xls`) are a single wide table and are plotted immediately.
+- **RiverWare `.rdf` files** are containers that can hold several datasets ("slots"), so the viewer asks you to pick a slot before it plots anything.
 
 ## Load a wide CSV or Excel file
 
@@ -11,10 +16,10 @@ Stacked label rows above the data are detected automatically. If the detection i
 
 ## Load a RiverWare RDF file in the browser
 
-The viewer reads [RiverWare `.rdf` files](https://riverware.org/HelpSystem/CurrentVersion/index.html#page/OutputVisual/Output_RDF.11.1.html) directly.
+The viewer reads [RiverWare `.rdf` files](https://riverware.org/HelpSystem/CurrentVersion/index.html#page/OutputVisual/Output_RDF.11.1.html) directly. Unlike a CSV or Excel file, an `.rdf` file is not one table — it can contain many **slots**, each its own ensemble — so loading it takes one extra step: choosing which slot to plot.
 
 1. Drag an `.rdf` file onto the page (or **Browse** to it). The viewer parses it and reports how many **series slots** it found.
-2. A **RDF series slot** dropdown appears. Pick the slot you want to view. The viewer converts that slot to a dataset and plots it.
+2. An **RDF series slot** dropdown appears. Pick the slot you want to view. The viewer converts that slot to a dataset and plots it.
 3. Switch slots at any time from the same dropdown. Your filters and colour grouping are preserved across slots of the same file, because every slot shares the same set of traces.
 4. To save the current slot as a file, use the **Download CSV** buttons:
    - **Wide** — rows are timesteps, columns are traces.
@@ -67,7 +72,7 @@ npm run build      # writes dist/
 npm run preview    # serves the production build locally to check it
 ```
 
-The output in `dist/` is a static site — host it on any [static file server](https://medium.com/swlh/need-a-local-static-server-here-are-several-options-bbbe77e59a11).
+The output in `dist/` is a static site — host it on any [static file server](https://medium.com/swlh/need-a-local-static-server-here-are-several-options-bbbe77e59a11). The deployed app at <https://ensemble-viewer.vercel.app/> is exactly this build, served by Vercel.
 
 ## Run the tests
 
