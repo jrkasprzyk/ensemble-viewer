@@ -188,7 +188,7 @@ export default function App() {
 
   // RDF flow (TASK-019): read text → parseRdf → store; the user then picks a
   // series slot which converts to a dataset via the shared applyDataset path.
-  async function loadRdf(f) {
+  async function loadRdf(f, { sourcePath: nextSourcePath = '' } = {}) {
     setError(null)
     setStatus(`Parsing ${f.name}…`)
     try {
@@ -199,7 +199,7 @@ export default function App() {
         throw new Error('No series slots found in this RDF file.')
       }
       setFile(f)
-      setSourcePath(resolveSourcePath(f))
+      setSourcePath(resolveSourcePath(f, nextSourcePath))
       setRdf(parsedRdf)
       setRdfSlots(seriesSlots)
       setSelectedSlot('')

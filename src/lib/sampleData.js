@@ -49,6 +49,25 @@ export async function fetchClassificationBundle(paths) {
   return Promise.all(paths.map((path) => fetchFileAsUpload(path)))
 }
 
+// Fetch an arbitrary web URL (e.g. a CDN-hosted CSV/XLSX/RDF) and wrap it as
+// a File so it flows through the same parse pipeline as a local upload.
+// Cross-origin fetches require the remote server to send CORS headers; when
+// they're missing the browser surfaces an opaque TypeError, so translate it
+// into something actionable.
+export async function fetchRemoteFile(url) {
+  let res
+  try {
+    res = await fetch(url)
+  } catch {
+    throw new Error(
+      `Could not reach ${url} — check the URL, or the server may not allow cross-origin (CORS) requests.`
+    )
+  }
+  if (!res.ok) throw new Error(`Failed to fetch ${url} (HTTP ${res.status})`)
+  const blob = await res.blob()
+  return new File([blob], getFileName(url), { type: blob.type || 'text/csv' })
+}
+
 async function fetchFileAsUpload(path) {
   const res = await fetch(path)
   if (!res.ok) throw new Error(`Failed to fetch ${path} (HTTP ${res.status})`)
@@ -57,5 +76,8 @@ async function fetchFileAsUpload(path) {
 }
 
 function getFileName(path) {
-  return path.split('/').pop() || 'example.csv'
+  // Strip query string / hash first so CDN URLs like .../data.rdf?token=…
+  // keep their real extension (extension drives CSV vs XLSX vs RDF routing).
+  const pathname = path.split(/[?#]/)[0]
+  return pathname.split('/').pop() || 'example.csv'
 }
