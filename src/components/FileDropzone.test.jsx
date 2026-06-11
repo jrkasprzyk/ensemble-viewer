@@ -11,9 +11,10 @@ vi.mock('../lib/sampleData.js', () => ({
   fetchExampleFile: vi.fn(),
   fetchExampleSidecar: vi.fn(),
   fetchClassificationBundle: vi.fn(),
+  fetchRemoteFile: vi.fn(),
 }))
 
-import { fetchExamples, fetchExampleFile } from '../lib/sampleData.js'
+import { fetchExamples, fetchExampleFile, fetchRemoteFile } from '../lib/sampleData.js'
 
 const SAMPLE_EXAMPLES = [
   { id: 'demo-a', label: 'Demo A', description: 'first', entry: '/a.csv', sidecar: null },
@@ -108,11 +109,97 @@ describe('FileDropzone — examples manifest loading', () => {
 
     fireEvent.change(screen.getByLabelText('Examples'), { target: { value: 'demo-a' } })
     await waitFor(() => expect(fetchExampleFile).toHaveBeenCalledWith('/a.csv'))
-    expect(onFile).toHaveBeenCalledWith(exampleFile)
+    expect(onFile).toHaveBeenCalledWith(exampleFile, { sourcePath: '/a.csv' })
 
     const secondLocalFile = new File(['second'], 'local.csv', { type: 'text/csv' })
     fireEvent.change(fileInput, { target: { files: [secondLocalFile] } })
     expect(onFile).toHaveBeenCalledWith(secondLocalFile)
     expect(fileInput.value).toBe('')
+  })
+})
+
+describe('FileDropzone — loading from a web URL', () => {
+  beforeEach(() => {
+    fetchExamples.mockReset()
+    fetchExamples.mockResolvedValue([])
+    fetchRemoteFile.mockReset()
+  })
+  afterEach(() => {
+    cleanup()
+  })
+
+  function submitUrl(value) {
+    const input = screen.getByLabelText('Data file URL')
+    fireEvent.change(input, { target: { value } })
+    fireEvent.click(screen.getByRole('button', { name: 'Load URL' }))
+  }
+
+  it('fetches a CSV URL and routes it through onFile with the URL as sourcePath', async () => {
+    const remoteFile = new File(['csv'], 'data.csv', { type: 'text/csv' })
+    fetchRemoteFile.mockResolvedValue(remoteFile)
+    const onFile = vi.fn().mockResolvedValue(undefined)
+    const onRdf = vi.fn()
+
+    render(
+      <StrictMode>
+        <FileDropzone onFile={onFile} onRdf={onRdf} hasData={false} />
+      </StrictMode>
+    )
+
+    submitUrl('https://cdn.example.com/data.csv')
+
+    await waitFor(() =>
+      expect(fetchRemoteFile).toHaveBeenCalledWith('https://cdn.example.com/data.csv')
+    )
+    await waitFor(() =>
+      expect(onFile).toHaveBeenCalledWith(remoteFile, {
+        sourcePath: 'https://cdn.example.com/data.csv',
+      })
+    )
+    expect(onRdf).not.toHaveBeenCalled()
+    // The input clears on success so a follow-up URL can be pasted.
+    await waitFor(() => expect(screen.getByLabelText('Data file URL').value).toBe(''))
+  })
+
+  it('routes a fetched .rdf URL through onRdf with the URL as sourcePath', async () => {
+    const remoteFile = new File(['rdf'], 'res.rdf', { type: 'text/plain' })
+    fetchRemoteFile.mockResolvedValue(remoteFile)
+    const onFile = vi.fn()
+    const onRdf = vi.fn().mockResolvedValue(undefined)
+
+    render(
+      <StrictMode>
+        <FileDropzone onFile={onFile} onRdf={onRdf} hasData={false} />
+      </StrictMode>
+    )
+
+    submitUrl('https://cdn.example.com/res.rdf?token=abc')
+
+    await waitFor(() =>
+      expect(onRdf).toHaveBeenCalledWith(remoteFile, {
+        sourcePath: 'https://cdn.example.com/res.rdf?token=abc',
+      })
+    )
+    expect(onFile).not.toHaveBeenCalled()
+  })
+
+  it('shows the fetch error and keeps the typed URL so it can be corrected', async () => {
+    fetchRemoteFile.mockRejectedValue(new Error('Failed to fetch https://x (HTTP 404)'))
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    render(
+      <StrictMode>
+        <FileDropzone onFile={vi.fn()} onRdf={vi.fn()} hasData={false} />
+      </StrictMode>
+    )
+
+    submitUrl('https://x')
+
+    await waitFor(() =>
+      expect(screen.getByText('Failed to fetch https://x (HTTP 404)')).toBeTruthy()
+    )
+    expect(screen.getByLabelText('Data file URL').value).toBe('https://x')
+
+    errSpy.mockRestore()
   })
 })

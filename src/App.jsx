@@ -27,12 +27,18 @@ import {
   BUNDLED_CATEGORY,
 } from './lib/labels.js'
 import { buildColorMap, buildSequentialColorMap, BUNDLED_COLOR_MAP } from './lib/palette.js'
+import { fetchRemoteFile } from './lib/sampleData.js'
+import { getSharedDatasetUrl, syncSharedDatasetUrl } from './lib/shareUrl.js'
 import { DEFAULT_STYLE_MULTIPLIER, resolveLineStyling } from './lib/plotStyle.js'
 import { deriveYAxisLabel, formatSlotLabel } from './lib/slotLabels.js'
 import ConfigControls from './components/ConfigControls.jsx'
 import { DEFAULT_CONFIG } from './lib/config.js'
 
 const EMPTY_LABEL = '⟨empty⟩'
+
+function resolveSourcePath(file, explicitSourcePath = '') {
+  return explicitSourcePath || file?.webkitRelativePath || file?.name || ''
+}
 
 export default function App() {
   // Raw dataset
@@ -96,6 +102,11 @@ export default function App() {
   // UI
   const [error, setError] = useState(null)
   const [status, setStatus] = useState('')
+  const [sourcePath, setSourcePath] = useState('')
+  // Free-text run identifier shown in the top bar next to the source path —
+  // lets the user name a run when the full local path isn't available
+  // (browsers only expose the bare filename). Cleared when the source changes.
+  const [runTag, setRunTag] = useState('')
 
   // --- File loading ------------------------------------------------------
 
@@ -163,7 +174,7 @@ export default function App() {
     setStatus(`Loaded ${parsed.columns.length} columns × ${parsed.rows.length} rows`)
   }
 
-  async function loadFile(f, { labelRowCount: lrc = null } = {}) {
+  async function loadFile(f, { labelRowCount: lrc = null, sourcePath: nextSourcePath = '' } = {}) {
     setError(null)
     setStatus(`Parsing ${f.name}…`)
     try {
@@ -172,6 +183,10 @@ export default function App() {
         ? await parseXlsxFile(f, { labelRowCount: lrc })
         : await parseCsvFile(f, { labelRowCount: lrc })
       setFile(f)
+      const resolvedSourcePath = resolveSourcePath(f, nextSourcePath)
+      if (resolvedSourcePath !== sourcePath) setRunTag('')
+      setSourcePath(resolvedSourcePath)
+      syncSharedDatasetUrl(resolvedSourcePath)
       setRdf(null)
       setRdfSlots([])
       setSelectedSlot('')
@@ -190,7 +205,7 @@ export default function App() {
 
   // RDF flow (TASK-019): read text → parseRdf → store; the user then picks a
   // series slot which converts to a dataset via the shared applyDataset path.
-  async function loadRdf(f) {
+  async function loadRdf(f, { sourcePath: nextSourcePath = '' } = {}) {
     setError(null)
     setStatus(`Parsing ${f.name}…`)
     try {
@@ -201,6 +216,10 @@ export default function App() {
         throw new Error('No series slots found in this RDF file.')
       }
       setFile(f)
+      const resolvedSourcePath = resolveSourcePath(f, nextSourcePath)
+      if (resolvedSourcePath !== sourcePath) setRunTag('')
+      setSourcePath(resolvedSourcePath)
+      syncSharedDatasetUrl(resolvedSourcePath)
       setRdf(parsedRdf)
       setRdfSlots(seriesSlots)
       setSelectedSlot('')
@@ -219,6 +238,33 @@ export default function App() {
       setStatus('')
     }
   }
+
+  // Shareable links: ?url=<dataset URL> auto-loads a web-hosted file on
+  // startup, e.g. https://viewer.example/?url=https://cdn.example/res.rdf.
+  // The ref guards against StrictMode's mount → unmount → remount double-run
+  // (and any re-render) so the file is fetched exactly once.
+  const autoLoadedUrlRef = useRef(false)
+  useEffect(() => {
+    if (autoLoadedUrlRef.current) return
+    autoLoadedUrlRef.current = true
+    const sharedUrl = getSharedDatasetUrl()
+    if (!sharedUrl) return
+    ;(async () => {
+      setStatus(`Fetching ${sharedUrl}…`)
+      try {
+        const f = await fetchRemoteFile(sharedUrl)
+        if (/\.rdf$/i.test(f.name)) {
+          await loadRdf(f, { sourcePath: sharedUrl })
+        } else {
+          await loadFile(f, { sourcePath: sharedUrl })
+        }
+      } catch (e) {
+        console.error(e)
+        setError(e.message || String(e))
+        setStatus('')
+      }
+    })()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function selectRdfSlot(slotKey) {
     if (!rdf || !slotKey) return
@@ -333,7 +379,7 @@ export default function App() {
 
   async function reparseWithHeaders() {
     if (!file) return
-    await loadFile(file, { labelRowCount })
+    await loadFile(file, { labelRowCount, sourcePath })
   }
 
   // --- Derived state -----------------------------------------------------
@@ -661,7 +707,7 @@ export default function App() {
 
   // --- Render ------------------------------------------------------------
 
-  const loadedFileName = file?.name || ''
+  const loadedFileName = sourcePath || file?.name || ''
 
   return (
     <div className="h-full flex flex-col">
@@ -675,7 +721,22 @@ export default function App() {
           </span>
         </div>
         <div className="font-mono text-[10px] text-muted text-right">
-          {loadedFileName && <div>file: {loadedFileName}</div>}
+          {loadedFileName && (
+            <div className="flex items-baseline justify-end gap-2">
+              <label className="flex items-baseline gap-1">
+                tag:
+                <input
+                  type="text"
+                  value={runTag}
+                  onChange={(e) => setRunTag(e.target.value)}
+                  placeholder="name this run"
+                  aria-label="Run tag"
+                  className="w-32 px-1 border-b border-rule bg-transparent font-mono text-[10px] text-ink placeholder:text-muted/60"
+                />
+              </label>
+              <span>file: {loadedFileName}</span>
+            </div>
+          )}
           <div>{status}</div>
           {resolvedLineStyle && (
             <div>
