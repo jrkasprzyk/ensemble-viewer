@@ -96,6 +96,10 @@ export default function App() {
   const [error, setError] = useState(null)
   const [status, setStatus] = useState('')
   const [sourcePath, setSourcePath] = useState('')
+  // Free-text run identifier shown in the top bar next to the source path —
+  // lets the user name a run when the full local path isn't available
+  // (browsers only expose the bare filename). Cleared when the source changes.
+  const [runTag, setRunTag] = useState('')
 
   // --- File loading ------------------------------------------------------
 
@@ -172,6 +176,7 @@ export default function App() {
         : await parseCsvFile(f, { labelRowCount: lrc })
       setFile(f)
       const resolvedSourcePath = resolveSourcePath(f, nextSourcePath)
+      if (resolvedSourcePath !== sourcePath) setRunTag('')
       setSourcePath(resolvedSourcePath)
       syncSharedDatasetUrl(resolvedSourcePath)
       setRdf(null)
@@ -204,6 +209,7 @@ export default function App() {
       }
       setFile(f)
       const resolvedSourcePath = resolveSourcePath(f, nextSourcePath)
+      if (resolvedSourcePath !== sourcePath) setRunTag('')
       setSourcePath(resolvedSourcePath)
       syncSharedDatasetUrl(resolvedSourcePath)
       setRdf(parsedRdf)
@@ -678,7 +684,22 @@ export default function App() {
           </span>
         </div>
         <div className="font-mono text-[10px] text-muted text-right">
-          {loadedFileName && <div>file: {loadedFileName}</div>}
+          {loadedFileName && (
+            <div className="flex items-baseline justify-end gap-2">
+              <label className="flex items-baseline gap-1">
+                tag:
+                <input
+                  type="text"
+                  value={runTag}
+                  onChange={(e) => setRunTag(e.target.value)}
+                  placeholder="name this run"
+                  aria-label="Run tag"
+                  className="w-32 px-1 border-b border-rule bg-transparent font-mono text-[10px] text-ink placeholder:text-muted/60"
+                />
+              </label>
+              <span>file: {loadedFileName}</span>
+            </div>
+          )}
           <div>{status}</div>
           {resolvedLineStyle && (
             <div>
