@@ -336,9 +336,16 @@ export function mergeRdfs(inputs) {
     for (const run of rdf.runs) {
       for (const slotKey of Object.keys(run.slots || {})) incomingKeys.add(slotKey)
     }
+    // Collision checks must consult every run's slot catalog, not just run 0:
+    // a slot can be present in only some runs of a file, and treating such a
+    // key as "new" would silently overwrite the existing copy in those runs.
+    const baseKeys = new Set()
+    for (const run of base.runs) {
+      for (const slotKey of Object.keys(run.slots || {})) baseKeys.add(slotKey)
+    }
     const keyMap = {}
     for (const slotKey of incomingKeys) {
-      if (!(slotKey in base.runs[0].slots)) {
+      if (!baseKeys.has(slotKey)) {
         keyMap[slotKey] = slotKey
         continue
       }
@@ -356,7 +363,7 @@ export function mergeRdfs(inputs) {
       } else {
         let renamed = `${slotKey} [${name}]`
         let n = 2
-        while (renamed in base.runs[0].slots) {
+        while (baseKeys.has(renamed)) {
           renamed = `${slotKey} [${name}] (${n})`
           n += 1
         }
