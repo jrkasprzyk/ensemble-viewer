@@ -14,6 +14,8 @@ A browser-based tool for visualising large ensemble timeseries datasets. Drop in
 - **Density-aware styling** — line width and opacity scale with the visible trace count; manual overrides available
 - **Colourblind-safe** — Okabe-Ito palette throughout
 - **Curated examples** — load bundled demo datasets (including CRMMS reservoir data) from a dropdown, no file needed
+- **Web URLs & shareable links** — paste a CSV/XLSX/RDF URL (e.g. on a CDN) into the drop zone, or open the viewer with `?url=<dataset URL>` to auto-load it; the address bar tracks the loaded URL so the link can be shared (the host must allow cross-origin requests)
+- **Run tag** — type a free-text identifier into the top bar to label the loaded run on screen, since browsers only ever reveal a local file's bare name, never its full path
 - **Save / load configuration** — export the full control-panel setup to a documented XML preset and reload it later
 
 ## Quick start
