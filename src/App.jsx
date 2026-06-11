@@ -5,7 +5,7 @@ import LabelControls from './components/LabelControls.jsx'
 const EnsemblePlot = lazy(() => import('./components/EnsemblePlot.jsx'))
 import { parseCsvFile } from './lib/parseCsv.js'
 import { parseXlsxFile } from './lib/parseXlsx.js'
-import { parseRdf, listSlots, rdfToDataset } from './lib/rdfParser.js'
+import { parseRdf, listSlots, rdfToDataset, mergeRdfs } from './lib/rdfParser.js'
 import { datasetToWideCsv, datasetToStackedCsv } from './lib/csvExport.js'
 import {
   parseLabelsFromNames,
@@ -43,7 +43,8 @@ function resolveSourcePath(file, explicitSourcePath = '') {
 export default function App() {
   // Raw dataset
   const [file, setFile] = useState(null)           // the File object, kept so we can re-parse
-  const [rdf, setRdf] = useState(null)             // parsed RDF (TASK-019), null for CSV/XLSX
+  const [rdf, setRdf] = useState(null)             // merged parsed RDF (TASK-019), null for CSV/XLSX
+  const [rdfInputs, setRdfInputs] = useState([])   // every loaded RDF file as {name, rdf}, re-merged on add/remove
   const [rdfSlots, setRdfSlots] = useState([])     // series slots available for selection
   const [selectedSlot, setSelectedSlot] = useState('')
   const [columns, setColumns] = useState([])
@@ -188,6 +189,7 @@ export default function App() {
       setSourcePath(resolvedSourcePath)
       syncSharedDatasetUrl(resolvedSourcePath)
       setRdf(null)
+      setRdfInputs([])
       setRdfSlots([])
       setSelectedSlot('')
       // Fresh load: drop any prior filter selection so nothing carries between
@@ -203,25 +205,39 @@ export default function App() {
     }
   }
 
-  // RDF flow (TASK-019): read text → parseRdf → store; the user then picks a
-  // series slot which converts to a dataset via the shared applyDataset path.
-  async function loadRdf(f, { sourcePath: nextSourcePath = '' } = {}) {
-    setError(null)
-    setStatus(`Parsing ${f.name}…`)
-    try {
-      const text = await f.text()
-      const parsedRdf = parseRdf(text)
-      const seriesSlots = listSlots(parsedRdf).filter((s) => s.scalar === false)
-      if (!seriesSlots.length) {
-        throw new Error('No series slots found in this RDF file.')
-      }
-      setFile(f)
-      const resolvedSourcePath = resolveSourcePath(f, nextSourcePath)
-      if (resolvedSourcePath !== sourcePath) setRunTag('')
-      setSourcePath(resolvedSourcePath)
-      syncSharedDatasetUrl(resolvedSourcePath)
-      setRdf(parsedRdf)
-      setRdfSlots(seriesSlots)
+  // Track where the current dataset came from: top-bar display, run-tag
+  // reset on source change, and the shareable ?url= param.
+  function applySourcePath(resolved) {
+    if (resolved !== sourcePath) setRunTag('')
+    setSourcePath(resolved)
+    syncSharedDatasetUrl(resolved)
+  }
+
+  // Merge a full set of RDF inputs and commit the result to state. Keeps the
+  // current slot selection (and the user's view) whenever the merged set still
+  // contains it; otherwise resets to the pick-a-slot state. Throws on
+  // incompatible files — callers leave prior state untouched in that case.
+  function applyMergedRdf(inputs) {
+    const { rdf: mergedRdf, slotSources, duplicates } = mergeRdfs(inputs)
+    const seriesSlots = listSlots(mergedRdf)
+      .filter((s) => s.scalar === false)
+      .map((s) => ({ ...s, source: slotSources[s.key] || '' }))
+    if (!seriesSlots.length) {
+      throw new Error('No series slots found in the selected RDF file(s).')
+    }
+    const mergedName = inputs.length === 1
+      ? inputs[0].name
+      : `${inputs[0].name} (+${inputs.length - 1} more RDF files)`
+    setFile({ name: mergedName })
+    setRdf(mergedRdf)
+    setRdfInputs(inputs)
+    setRdfSlots(seriesSlots)
+    const keepSlot = Boolean(selectedSlot) && seriesSlots.some((s) => s.key === selectedSlot)
+    if (keepSlot) {
+      // Same traces, same slot — rebuild the dataset so any scalar slots from
+      // newly added files become label categories, preserving the view.
+      applyDataset(rdfToDataset(mergedRdf, selectedSlot), { preserveView: true })
+    } else {
       setSelectedSlot('')
       // Fresh load: drop any prior filter selection (REQ-002). The first slot
       // pick is treated as a fresh load (REQ-003); later switches preserve.
@@ -231,11 +247,99 @@ export default function App() {
       // Clear any previously loaded dataset until a slot is chosen.
       setRows([])
       setColumns([])
-      setStatus(`Parsed ${f.name}: ${seriesSlots.length} series slot(s) — pick one to view`)
+    }
+    return { seriesSlots, duplicates, keepSlot }
+  }
+
+  // Human note for merge duplicates, appended to the status line.
+  function describeDuplicates(duplicates) {
+    const kept = duplicates.filter((d) => d.action === 'kept-both').length
+    const ignored = duplicates.length - kept
+    const notes = []
+    if (kept) notes.push(`${kept} conflicting duplicate slot(s) kept from both files — pick a version in the slot list`)
+    if (ignored) notes.push(`${ignored} identical duplicate slot(s) ignored`)
+    return notes.length ? ` (${notes.join('; ')})` : ''
+  }
+
+  // RDF flow (TASK-019): read text → parseRdf → merge → store; the user then
+  // picks a series slot which converts to a dataset via the shared
+  // applyDataset path. When RDF data is already loaded, newly selected files
+  // are merged into the existing set (re-selecting a filename replaces that
+  // file); load a CSV/XLSX or remove every RDF file to start over.
+  async function loadRdf(filesOrFile, { sourcePath: nextSourcePath = '' } = {}) {
+    const rdfFiles = Array.isArray(filesOrFile) ? filesOrFile : [filesOrFile]
+    if (!rdfFiles.length) return
+    setError(null)
+    setStatus(
+      rdfFiles.length === 1
+        ? `Parsing ${rdfFiles[0].name}…`
+        : `Parsing ${rdfFiles.length} RDF files…`
+    )
+    try {
+      const newInputs = []
+      for (const f of rdfFiles) {
+        const text = await f.text()
+        let parsedRdf
+        try {
+          parsedRdf = parseRdf(text)
+        } catch (e) {
+          throw new Error(`Failed to parse ${f.name}: ${e.message || String(e)}`)
+        }
+        newInputs.push({ name: f.name, rdf: parsedRdf })
+      }
+      const kept = rdf !== null
+        ? rdfInputs.filter((inp) => !newInputs.some((n) => n.name === inp.name))
+        : []
+      const allInputs = [...kept, ...newInputs]
+      const { seriesSlots, duplicates, keepSlot } = applyMergedRdf(allInputs)
+      // A single-file set keeps its real source (path or URL) so the top bar
+      // and ?url= sharing work; a merged set has no one source, so clear it
+      // and let the top bar fall back to the merged display name.
+      applySourcePath(
+        allInputs.length === 1 ? resolveSourcePath(rdfFiles[0], nextSourcePath) : ''
+      )
+      setStatus(
+        `Parsed ${allInputs.length} RDF file(s): ${seriesSlots.length} series slot(s)` +
+        `${keepSlot ? '' : ' — pick one to view'}${describeDuplicates(duplicates)}`
+      )
     } catch (e) {
       console.error(e)
       setError(e.message || String(e))
       setStatus('')
+    }
+  }
+
+  // Remove one previously loaded RDF file and re-merge the remainder.
+  function removeRdfFile(name) {
+    setError(null)
+    const remaining = rdfInputs.filter((inp) => inp.name !== name)
+    if (!remaining.length) {
+      setFile(null)
+      applySourcePath('')
+      setRdf(null)
+      setRdfInputs([])
+      setRdfSlots([])
+      setSelectedSlot('')
+      setActiveByCategory({})
+      prevCategoryValuesRef.current = {}
+      forceFreshSeedRef.current = true
+      setRows([])
+      setColumns([])
+      setStatus('')
+      return
+    }
+    try {
+      const { seriesSlots, keepSlot } = applyMergedRdf(remaining)
+      // Original File objects are gone; show the remaining file's name (or the
+      // merged display name) via the top bar's file-name fallback.
+      applySourcePath('')
+      setStatus(
+        `Removed ${name}: ${seriesSlots.length} series slot(s)` +
+        `${keepSlot ? '' : ' — pick one to view'}`
+      )
+    } catch (e) {
+      console.error(e)
+      setError(e.message || String(e))
     }
   }
 
@@ -761,6 +865,8 @@ export default function App() {
             onClassifications={loadClassifications}
             classificationSchemeCount={classificationSchemeCount}
             hasData={rows.length > 0}
+            rdfFileNames={rdfInputs.map((inp) => inp.name)}
+            onRemoveRdfFile={removeRdfFile}
             rdfSlots={rdfSlots}
             selectedSlot={selectedSlot}
             onSelectSlot={selectRdfSlot}
@@ -908,9 +1014,11 @@ function EmptyState({ awaitingSlot = false }) {
         <div className="max-w-md text-center">
           <h2 className="font-display text-2xl font-light mb-3">Choose a series slot to begin</h2>
           <p className="text-sm text-muted leading-relaxed">
-            The RDF file is loaded. Pick a series slot from the dropdown on the
+            The RDF data is loaded. Pick a series slot from the dropdown on the
             left to plot it — each slot is a variable recorded across the
-            ensemble. Classification files can be attached at any point.
+            ensemble. You can add more <code>.rdf</code> files from the same
+            model run at any time to combine their slots into one list.
+            Classification files can be attached at any point.
           </p>
         </div>
       </div>

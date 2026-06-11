@@ -11,6 +11,21 @@ function isRdf(file) {
   return /\.rdf$/i.test(file?.name || '')
 }
 
+/**
+ * Group RDF slot metadata by source filename.
+ *
+ * @param {Array<{source?:string}>} slots
+ * @returns {Record<string, Array<{source?:string}>>}
+ */
+function groupSlotsBySource(slots) {
+  return slots.reduce((acc, slot) => {
+    const sourceFile = slot.source || ''
+    if (!acc[sourceFile]) acc[sourceFile] = []
+    acc[sourceFile].push(slot)
+    return acc
+  }, {})
+}
+
 export default function FileDropzone({
   onFile,
   onRdf,
@@ -18,6 +33,8 @@ export default function FileDropzone({
   onClassifications,
   classificationSchemeCount,
   hasData,
+  rdfFileNames = [],
+  onRemoveRdfFile,
   rdfSlots = [],
   selectedSlot = '',
   onSelectSlot,
@@ -93,10 +110,12 @@ export default function FileDropzone({
 
   function handleFiles(files) {
     if (!files || !files.length) return
-    const file = files[0]
-    if (isRdf(file) && onRdf) {
-      onRdf(file)
+    const allFiles = Array.from(files)
+    const rdfFiles = allFiles.filter(isRdf)
+    if (rdfFiles.length && rdfFiles.length === allFiles.length && onRdf) {
+      onRdf(rdfFiles)
     } else {
+      const file = allFiles[0]
       onFile(file)
     }
     if (inputRef.current) inputRef.current.value = ''
@@ -174,7 +193,11 @@ export default function FileDropzone({
             Data file
           </span>
           <span className="text-ink">
-            {hasData ? 'Replace CSV, XLSX or RDF…' : 'Drop CSV, XLSX or RDF, or click to browse'}
+            {rdfFileNames.length > 0
+              ? 'Add more RDF files, or drop a CSV/XLSX to replace'
+              : hasData
+                ? 'Replace CSV, XLSX or RDF…'
+                : 'Drop CSV, XLSX or RDF, or click to browse'}
           </span>
         </div>
 
@@ -221,6 +244,7 @@ export default function FileDropzone({
         ref={inputRef}
         type="file"
         accept=".csv,.tsv,.xlsx,.xls,.rdf"
+        multiple
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
       />
@@ -247,6 +271,32 @@ export default function FileDropzone({
         </button>
       </form>
 
+      {rdfFileNames.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-rule flex flex-col gap-1">
+          <span className="font-mono uppercase tracking-wider text-[10px] text-muted">
+            Loaded RDF files
+          </span>
+          <ul className="flex flex-col gap-0.5">
+            {rdfFileNames.map((name) => (
+              <li
+                key={name}
+                className="flex items-center justify-between gap-2 font-mono text-[11px] text-ink"
+              >
+                <span className="truncate" title={name}>{name}</span>
+                <button
+                  onClick={() => onRemoveRdfFile?.(name)}
+                  aria-label={`Remove ${name}`}
+                  title={`Remove ${name}`}
+                  className="px-1 text-[10px] border border-rule hover:border-ink transition-colors"
+                >
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {rdfSlots.length > 0 && (
         <div className="mt-2 pt-2 border-t border-rule flex flex-col gap-1">
           <span className="font-mono uppercase tracking-wider text-[10px] text-muted">
@@ -259,10 +309,22 @@ export default function FileDropzone({
             className="px-2 py-1.5 text-[11px] font-mono border border-rule bg-paper text-ink"
           >
             <option value="">Select a slot…</option>
-            {rdfSlots.map((slot) => (
-              <option key={slot.key} value={slot.key}>
-                {slot.key}{slot.units ? ` (${slot.units})` : ''}
-              </option>
+            {Object.entries(groupSlotsBySource(rdfSlots)).map(([sourceFile, slots]) => (
+              sourceFile ? (
+                <optgroup key={sourceFile} label={sourceFile}>
+                  {slots.map((slot) => (
+                    <option key={slot.key} value={slot.key}>
+                      {slot.key}{slot.units ? ` (${slot.units})` : ''}
+                    </option>
+                  ))}
+                </optgroup>
+              ) : (
+                slots.map((slot) => (
+                  <option key={slot.key} value={slot.key}>
+                    {slot.key}{slot.units ? ` (${slot.units})` : ''}
+                  </option>
+                ))
+              )
             ))}
           </select>
         </div>

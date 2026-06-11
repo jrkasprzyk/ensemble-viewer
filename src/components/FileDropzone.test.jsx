@@ -116,6 +116,49 @@ describe('FileDropzone — examples manifest loading', () => {
     expect(onFile).toHaveBeenCalledWith(secondLocalFile)
     expect(fileInput.value).toBe('')
   })
+
+  it('passes multiple RDF files together when all selected files are .rdf', async () => {
+    fetchExamples.mockResolvedValue(SAMPLE_EXAMPLES)
+    const onFile = vi.fn()
+    const onRdf = vi.fn()
+    const { container } = render(
+      <StrictMode>
+        <FileDropzone onFile={onFile} onRdf={onRdf} onSidecar={() => {}} hasData={false} />
+      </StrictMode>
+    )
+    await waitFor(() => expect(screen.getByLabelText('Examples').disabled).toBe(false))
+
+    const fileInput = container.querySelector('input[type="file"][accept=".csv,.tsv,.xlsx,.xls,.rdf"]')
+    const inputRdf = new File(['input'], 'streamflow.rdf', { type: 'application/xml' })
+    const outputRdf = new File(['output'], 'res.rdf', { type: 'application/xml' })
+    fireEvent.change(fileInput, { target: { files: [inputRdf, outputRdf] } })
+
+    expect(onRdf).toHaveBeenCalledWith([inputRdf, outputRdf])
+    expect(onFile).not.toHaveBeenCalled()
+    expect(fileInput.value).toBe('')
+  })
+
+  it('lists loaded RDF files with working remove buttons', async () => {
+    fetchExamples.mockResolvedValue(SAMPLE_EXAMPLES)
+    const onRemoveRdfFile = vi.fn()
+    render(
+      <StrictMode>
+        <FileDropzone
+          onFile={() => {}}
+          onSidecar={() => {}}
+          hasData={false}
+          rdfFileNames={['streamflow.rdf', 'res.rdf']}
+          onRemoveRdfFile={onRemoveRdfFile}
+        />
+      </StrictMode>
+    )
+
+    expect(screen.getByText('streamflow.rdf')).toBeTruthy()
+    expect(screen.getByText('res.rdf')).toBeTruthy()
+
+    fireEvent.click(screen.getByLabelText('Remove res.rdf'))
+    expect(onRemoveRdfFile).toHaveBeenCalledWith('res.rdf')
+  })
 })
 
 describe('FileDropzone — loading from a web URL', () => {

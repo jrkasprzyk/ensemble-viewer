@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { parseRdf, listSlots, rdfToDataset, normalizeTimestamp } from './rdfParser.js'
+import { parseRdf, listSlots, rdfToDataset, normalizeTimestamp, mergeRdfs } from './rdfParser.js'
 import { parseCsvFile } from './parseCsv.js'
 
 // Resolve the shared sample fixtures (also used by the Python suite, GUD-002).
@@ -278,5 +278,136 @@ describe('parseRdf — sample_subset.rdf', () => {
     expect(ds.columns).toEqual(['trace_1', 'trace_2'])
     expect(ds.rows).toHaveLength(4)
     expect(ds.indexColumn).toBe('date')
+  })
+})
+
+describe('mergeRdfs', () => {
+  function createMockRdfText({ slotName, values, times = ['2020-01-01 24:00', '2020-01-02 24:00'] }) {
+    return [
+      'name:x',
+      'number_of_runs:1',
+      'END_PACKAGE_PREAMBLE',
+      'trace:1',
+      `time_steps:${times.length}`,
+      'END_RUN_PREAMBLE',
+      ...times,
+      'object_type:R',
+      'object_name:Reservoir',
+      'slot_type:SeriesSlot',
+      `slot_name:${slotName}`,
+      'END_SLOT_PREAMBLE',
+      'units:cfs',
+      'scale:1',
+      ...values.map(String),
+      'END_COLUMN',
+      'END_SLOT',
+      'END_RUN',
+      '',
+    ].join('\n')
+  }
+
+  it('merges slots from multiple RDF files and tracks slot sources', () => {
+    const streamflow = parseRdf(createMockRdfText({ slotName: 'Streamflow', values: [10, 11] }))
+    const releases = parseRdf(createMockRdfText({ slotName: 'Release', values: [20, 21] }))
+    const merged = mergeRdfs([
+      { name: 'streamflow.rdf', rdf: streamflow },
+      { name: 'res.rdf', rdf: releases },
+    ])
+    expect(Object.keys(merged.rdf.runs[0].slots).sort()).toEqual(
+      ['Reservoir.Release', 'Reservoir.Streamflow']
+    )
+    expect(merged.slotSources).toEqual({
+      'Reservoir.Streamflow': 'streamflow.rdf',
+      'Reservoir.Release': 'res.rdf',
+    })
+    expect(merged.duplicates).toEqual([])
+  })
+
+  it('ignores a duplicate slot whose units and values are identical', () => {
+    const a = parseRdf(createMockRdfText({ slotName: 'Flow', values: [1, 2] }))
+    const b = parseRdf(createMockRdfText({ slotName: 'Flow', values: [1, 2] }))
+    const merged = mergeRdfs([
+      { name: 'a.rdf', rdf: a },
+      { name: 'b.rdf', rdf: b },
+    ])
+    expect(Object.keys(merged.rdf.runs[0].slots)).toEqual(['Reservoir.Flow'])
+    expect(merged.slotSources['Reservoir.Flow']).toBe('a.rdf')
+    expect(merged.duplicates).toEqual([
+      { key: 'Reservoir.Flow', action: 'ignored-identical', files: ['a.rdf', 'b.rdf'] },
+    ])
+    expect(merged.rdf.warnings.some((w) => /identical/.test(w))).toBe(true)
+  })
+
+  it('keeps both versions of a conflicting duplicate slot under a suffixed key', () => {
+    const a = parseRdf(createMockRdfText({ slotName: 'Flow', values: [1, 2] }))
+    const b = parseRdf(createMockRdfText({ slotName: 'Flow', values: [3, 4] }))
+    const merged = mergeRdfs([
+      { name: 'a.rdf', rdf: a },
+      { name: 'b.rdf', rdf: b },
+    ])
+    expect(Object.keys(merged.rdf.runs[0].slots).sort()).toEqual(
+      ['Reservoir.Flow', 'Reservoir.Flow [b.rdf]']
+    )
+    // Original key keeps the first file's values; suffixed key holds the second's.
+    expect(merged.rdf.runs[0].slots['Reservoir.Flow'].values).toEqual([1, 2])
+    expect(merged.rdf.runs[0].slots['Reservoir.Flow [b.rdf]'].values).toEqual([3, 4])
+    expect(merged.slotSources).toEqual({
+      'Reservoir.Flow': 'a.rdf',
+      'Reservoir.Flow [b.rdf]': 'b.rdf',
+    })
+    expect(merged.duplicates).toEqual([
+      { key: 'Reservoir.Flow', action: 'kept-both', files: ['a.rdf', 'b.rdf'] },
+    ])
+    // Both versions remain individually plottable.
+    const ds = rdfToDataset(merged.rdf, 'Reservoir.Flow [b.rdf]')
+    expect(ds.rows.map((r) => r.trace_1)).toEqual([3, 4])
+  })
+
+  it('detects a duplicate of a slot that is missing from the first run', () => {
+    // A slot present in only some runs of the base must still collide with an
+    // incoming copy of the same key, instead of being overwritten as "new".
+    const times = ['2020-01-01 24:00', '2020-01-02 24:00']
+    const slot = (values) => ({ units: 'cfs', scale: 1, values, scalar: false })
+    const a = {
+      meta: {},
+      runs: [
+        { preamble: { trace: '1' }, times, slots: {} },
+        { preamble: { trace: '2' }, times, slots: { 'Reservoir.Flow': slot([1, 2]) } },
+      ],
+      warnings: [],
+    }
+    const b = {
+      meta: {},
+      runs: [
+        { preamble: { trace: '1' }, times, slots: { 'Reservoir.Flow': slot([5, 6]) } },
+        { preamble: { trace: '2' }, times, slots: { 'Reservoir.Flow': slot([7, 8]) } },
+      ],
+      warnings: [],
+    }
+    const merged = mergeRdfs([
+      { name: 'a.rdf', rdf: a },
+      { name: 'b.rdf', rdf: b },
+    ])
+    // The base copy in run 2 survives under the original key.
+    expect(merged.rdf.runs[1].slots['Reservoir.Flow'].values).toEqual([1, 2])
+    // The incoming copy lands under the suffixed key in every run.
+    expect(merged.rdf.runs[0].slots['Reservoir.Flow [b.rdf]'].values).toEqual([5, 6])
+    expect(merged.rdf.runs[1].slots['Reservoir.Flow [b.rdf]'].values).toEqual([7, 8])
+    expect(merged.duplicates).toEqual([
+      { key: 'Reservoir.Flow', action: 'kept-both', files: ['a.rdf', 'b.rdf'] },
+    ])
+  })
+
+  it('throws when file timesteps do not align', () => {
+    const a = parseRdf(createMockRdfText({ slotName: 'Flow', values: [1, 2] }))
+    const b = parseRdf(createMockRdfText({
+      slotName: 'Release',
+      values: [3, 4],
+      times: ['2020-01-01 24:00', '2020-01-03 24:00'],
+    }))
+    expect(() => mergeRdfs([
+      { name: 'a.rdf', rdf: a },
+      { name: 'b.rdf', rdf: b },
+    ])).toThrow(/incompatible/)
   })
 })

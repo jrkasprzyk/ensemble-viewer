@@ -240,6 +240,160 @@ export function listSlots(rdf) {
   }))
 }
 
+// Two copies of a slot are interchangeable when units and every value agree
+// in a given run. Used to silently drop identical duplicates during merge.
+function slotValuesEqual(a, b) {
+  if (!a || !b) return false
+  if (String(a.units ?? '') !== String(b.units ?? '')) return false
+  const av = a.values || []
+  const bv = b.values || []
+  if (av.length !== bv.length) return false
+  for (let i = 0; i < av.length; i++) {
+    if (av[i] !== bv[i]) return false
+  }
+  return true
+}
+
+/**
+ * Merge multiple parsed RDF payloads from the same model run into one logical
+ * RDF object by unioning slots across files.
+ *
+ * Duplicate slot keys are not an error: an identical copy (same units and
+ * values in every run) is dropped with a warning, while a conflicting copy is
+ * kept under a source-suffixed key (`Object.Slot [file.rdf]`) so the user can
+ * pick either version from the slot list.
+ *
+ * @param {Array<{name:string, rdf:{ meta:object, runs:object[], warnings?:string[] }}>} inputs
+ * @returns {{ rdf:{ meta:object, runs:object[], warnings:string[] },
+ *            slotSources:Record<string,string>,
+ *            duplicates:Array<{key:string, action:'ignored-identical'|'kept-both', files:string[]}> }}
+ */
+export function mergeRdfs(inputs) {
+  if (!Array.isArray(inputs) || inputs.length === 0) {
+    throw new Error('At least one RDF input is required.')
+  }
+
+  const [{ name: firstName, rdf: firstRdf }] = inputs
+  const base = {
+    meta: { ...(firstRdf.meta || {}) },
+    runs: firstRdf.runs.map((run) => ({
+      ...run,
+      preamble: { ...(run.preamble || {}) },
+      times: [...(run.times || [])],
+      slots: { ...(run.slots || {}) },
+    })),
+    warnings: Array.isArray(firstRdf.warnings) ? [...firstRdf.warnings] : [],
+  }
+  const slotSources = {}
+  for (const slotKey of Object.keys(base.runs[0]?.slots || {})) {
+    slotSources[slotKey] = firstName
+  }
+  const duplicates = []
+
+  for (let fileIndex = 1; fileIndex < inputs.length; fileIndex++) {
+    const { name, rdf } = inputs[fileIndex]
+    if (!rdf?.runs?.length) {
+      throw new Error(`"${name}" contains no runs.`)
+    }
+    if (rdf.runs.length !== base.runs.length) {
+      throw new Error(
+        `RDF files are incompatible: "${firstName}" has ${base.runs.length} runs but ` +
+        `"${name}" has ${rdf.runs.length}.`
+      )
+    }
+    for (let r = 0; r < base.runs.length; r++) {
+      const expectedRun = base.runs[r]
+      const incomingRun = rdf.runs[r]
+      const expectedTrace = String(expectedRun.preamble?.trace ?? r + 1)
+      const incomingTrace = String(incomingRun.preamble?.trace ?? r + 1)
+      if (expectedTrace !== incomingTrace) {
+        throw new Error(
+          `RDF files are incompatible: run ${r + 1} trace id ${incomingTrace} in "${name}" ` +
+          `does not match ${expectedTrace}.`
+        )
+      }
+      if (incomingRun.times.length !== expectedRun.times.length) {
+        throw new Error(
+          `RDF files are incompatible: run ${r + 1} in "${name}" has ${incomingRun.times.length} ` +
+          `timesteps, expected ${expectedRun.times.length}.`
+        )
+      }
+      for (let t = 0; t < expectedRun.times.length; t++) {
+        if (incomingRun.times[t] !== expectedRun.times[t]) {
+          throw new Error(
+            `RDF files are incompatible: run ${r + 1} timestep ${t + 1} in "${name}" ` +
+            `(${incomingRun.times[t]}) does not match ${expectedRun.times[t]}.`
+          )
+        }
+      }
+    }
+
+    // Resolve duplicate slot keys before merging. The decision must be made
+    // once per key (not per run) so the merged slots stay uniform across runs:
+    // identical everywhere → drop; any difference → keep both, with the
+    // incoming copy under a source-suffixed key.
+    const incomingKeys = new Set()
+    for (const run of rdf.runs) {
+      for (const slotKey of Object.keys(run.slots || {})) incomingKeys.add(slotKey)
+    }
+    // Collision checks must consult every run's slot catalog, not just run 0:
+    // a slot can be present in only some runs of a file, and treating such a
+    // key as "new" would silently overwrite the existing copy in those runs.
+    const baseKeys = new Set()
+    for (const run of base.runs) {
+      for (const slotKey of Object.keys(run.slots || {})) baseKeys.add(slotKey)
+    }
+    const keyMap = {}
+    for (const slotKey of incomingKeys) {
+      if (!baseKeys.has(slotKey)) {
+        keyMap[slotKey] = slotKey
+        continue
+      }
+      const prior = slotSources[slotKey] || firstName
+      const identical = base.runs.every((run, r) =>
+        slotValuesEqual(run.slots[slotKey], rdf.runs[r].slots?.[slotKey])
+      )
+      if (identical) {
+        keyMap[slotKey] = null
+        duplicates.push({ key: slotKey, action: 'ignored-identical', files: [prior, name] })
+        base.warnings.push(
+          `Slot "${slotKey}" in "${name}" is identical to the copy already loaded ` +
+          `from "${prior}"; the duplicate was ignored.`
+        )
+      } else {
+        let renamed = `${slotKey} [${name}]`
+        let n = 2
+        while (baseKeys.has(renamed)) {
+          renamed = `${slotKey} [${name}] (${n})`
+          n += 1
+        }
+        keyMap[slotKey] = renamed
+        duplicates.push({ key: slotKey, action: 'kept-both', files: [prior, name] })
+        base.warnings.push(
+          `Slot "${slotKey}" appears in both "${prior}" and "${name}" with different ` +
+          `values; both were kept — the copy from "${name}" is listed as "${renamed}".`
+        )
+      }
+    }
+
+    for (let r = 0; r < base.runs.length; r++) {
+      const expectedRun = base.runs[r]
+      const incomingRun = rdf.runs[r]
+      for (const [slotKey, slot] of Object.entries(incomingRun.slots || {})) {
+        const mapped = keyMap[slotKey]
+        if (mapped === null) continue
+        expectedRun.slots[mapped] = slot
+        if (!(mapped in slotSources)) slotSources[mapped] = name
+      }
+    }
+    if (Array.isArray(rdf.warnings)) {
+      base.warnings.push(...rdf.warnings)
+    }
+  }
+
+  return { rdf: base, slotSources, duplicates }
+}
+
 // ---------------------------------------------------------------------------
 // rdfToDataset — TASK-017 / DR-01 / DR-02 / DR-03
 // ---------------------------------------------------------------------------
