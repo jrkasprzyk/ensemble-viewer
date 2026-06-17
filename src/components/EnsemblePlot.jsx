@@ -221,8 +221,8 @@ export default function EnsemblePlot({
   // longer drawable — drop the stale highlight so the plot doesn't stay dimmed
   // with nothing emphasized.
   useEffect(() => {
-    if (selectedColumn && !columnSet.has(selectedColumn)) setSelectedColumn(null)
-  }, [selectedColumn, columnSet])
+    if (selectedColumn && (!columnSet.has(selectedColumn) || !visibleColumns.has(selectedColumn))) setSelectedColumn(null)
+  }, [selectedColumn, columnSet, visibleColumns])
 
   // Apply the selection highlight WITHOUT rebuilding the heavy base traces —
   // reuses x/y array refs, overriding only line/opacity. See plotStyle.js.
