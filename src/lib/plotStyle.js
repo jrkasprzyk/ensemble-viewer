@@ -196,7 +196,7 @@ export function applySelectionHighlight(traces, selectedColumn, columnSet) {
   const rest = []
   let selected = null
   for (const t of traces) {
-    if (t.type === 'scattergl' && columnSet.has(t.name)) {
+    if (t.type === 'scattergl' && t.visible !== false && columnSet.has(t.name)) {
       if (t.name === selectedColumn) {
         const width = clamp((t.line?.width ?? 1.5) * SELECT_WIDTH_FACTOR, MIN_SELECT_WIDTH, MAX_LINE_WIDTH)
         selected = { ...t, opacity: 1, line: { ...t.line, width } }
