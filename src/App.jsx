@@ -33,6 +33,7 @@ import { DEFAULT_STYLE_MULTIPLIER, resolveLineStyling } from './lib/plotStyle.js
 import { deriveYAxisLabel, formatSlotLabel } from './lib/slotLabels.js'
 import ConfigControls from './components/ConfigControls.jsx'
 import { DEFAULT_CONFIG } from './lib/config.js'
+import CollapsibleSection from './components/CollapsibleSection.jsx'
 
 const EMPTY_LABEL = '⟨empty⟩'
 
@@ -108,6 +109,8 @@ export default function App() {
   // lets the user name a run when the full local path isn't available
   // (browsers only expose the bare filename). Cleared when the source changes.
   const [runTag, setRunTag] = useState('')
+  // Data File panel collapses after first load so Filter/Classification are reachable
+  const [dataFileOpen, setDataFileOpen] = useState(true)
 
   // --- File loading ------------------------------------------------------
 
@@ -198,6 +201,7 @@ export default function App() {
       prevCategoryValuesRef.current = {}
       forceFreshSeedRef.current = true
       applyDataset(parsed)
+      setDataFileOpen(false)  // auto-collapse Data File panel after load
     } catch (e) {
       console.error(e)
       setError(e.message || String(e))
@@ -380,6 +384,7 @@ export default function App() {
       const preserveView = Boolean(selectedSlot)
       setSelectedSlot(slotKey)
       applyDataset(parsed, { preserveView })
+      if (!preserveView) setDataFileOpen(false)  // collapse on first slot pick
     } catch (e) {
       console.error(e)
       setError(e.message || String(e))
@@ -858,21 +863,23 @@ export default function App() {
 
       <main className="flex-1 grid grid-cols-[320px_1fr] min-h-0">
         <aside className="border-r border-rule p-3 overflow-y-auto flex flex-col gap-3">
-          <FileDropzone
-            onFile={loadFile}
-            onRdf={loadRdf}
-            onSidecar={loadSidecar}
-            onClassifications={loadClassifications}
-            classificationSchemeCount={classificationSchemeCount}
-            hasData={rows.length > 0}
-            rdfFileNames={rdfInputs.map((inp) => inp.name)}
-            onRemoveRdfFile={removeRdfFile}
-            rdfSlots={rdfSlots}
-            selectedSlot={selectedSlot}
-            onSelectSlot={selectRdfSlot}
-            canDownloadCsv={rdf !== null && rows.length > 0}
-            onDownloadCsv={downloadDatasetCsv}
-          />
+          <CollapsibleSection tone="data" label="Data File" defaultOpen={dataFileOpen}>
+            <FileDropzone
+              onFile={loadFile}
+              onRdf={loadRdf}
+              onSidecar={loadSidecar}
+              onClassifications={loadClassifications}
+              classificationSchemeCount={classificationSchemeCount}
+              hasData={rows.length > 0}
+              rdfFileNames={rdfInputs.map((inp) => inp.name)}
+              onRemoveRdfFile={removeRdfFile}
+              rdfSlots={rdfSlots}
+              selectedSlot={selectedSlot}
+              onSelectSlot={selectRdfSlot}
+              canDownloadCsv={rdf !== null && rows.length > 0}
+              onDownloadCsv={downloadDatasetCsv}
+            />
+          </CollapsibleSection>
 
           {rows.length > 0 && (
             <LabelStrategyPicker
