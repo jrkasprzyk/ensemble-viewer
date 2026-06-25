@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   fetchExamples,
   fetchExampleFile,
@@ -124,9 +124,13 @@ export default function FileDropzone({
     if (inputRef.current) inputRef.current.value = ''
   }
 
-  // Keep the ref in sync with the latest handleFiles on every render so the
-  // window-level drag-drop effect (registered once) never calls a stale closure.
-  handleFilesRef.current = handleFiles
+  // Keep the ref in sync with the latest handleFiles after every commit so the
+  // window-level drag-drop effect (registered once with [] deps) never calls a
+  // stale closure. useLayoutEffect runs synchronously before the browser paints,
+  // so no drop event can fire while the ref still points to an old value.
+  useLayoutEffect(() => {
+    handleFilesRef.current = handleFiles
+  })
 
   async function handleExampleChange(exampleId) {
     if (!exampleId) return
