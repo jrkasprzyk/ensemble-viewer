@@ -79,7 +79,7 @@ export default function FileDropzone({
       e.preventDefault()
       dragCounterRef.current = 0
       setDrag(false)
-      handleFilesRef.current(e.dataTransfer.files)
+      handleFilesRef.current?.(e.dataTransfer.files)
     }
 
     window.addEventListener('dragenter', onDragEnter)

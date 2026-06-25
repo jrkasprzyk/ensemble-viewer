@@ -169,9 +169,9 @@ describe('FileDropzone — examples manifest loading', () => {
 
     // Simulate a window-level drop of a second RDF file.
     const rdfFile = new File(['rdf'], 'second.rdf', { type: 'application/xml' })
-    const dropEvent = Object.assign(new Event('drop'), {
-      dataTransfer: { files: [rdfFile] },
-    })
+    const dataTransfer = new DataTransfer()
+    dataTransfer.items.add(rdfFile)
+    const dropEvent = new DragEvent('drop', { dataTransfer, bubbles: true })
     window.dispatchEvent(dropEvent)
 
     // The latest onRdf (onRdf2) must be called — not the stale initial onRdf1.
