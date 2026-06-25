@@ -1,4 +1,4 @@
-import { useCallback, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import createPlotlyFactory from 'react-plotly.js/factory'
 import Plotly from 'plotly.js-dist-min'
 // Support both CommonJS and ESM shapes for the factory and Plotly imports.
@@ -7,7 +7,7 @@ const PlotlyLib = Plotly?.default ?? Plotly
 const Plot = createPlotlyComponent(PlotlyLib)
 import { NEUTRAL_GRAY } from '../lib/palette.js'
 import { computeGroupStats } from '../lib/stats.js'
-import { resolveLineStyling, tickFormatString, buildLegendTraces, escapePlotlyText } from '../lib/plotStyle.js'
+import { resolveLineStyling, tickFormatString, buildLegendTraces, escapePlotlyText, applySelectionHighlight } from '../lib/plotStyle.js'
 
 const DOWNLOAD_FORMATS = ['svg', 'png']
 
@@ -46,7 +46,15 @@ export default function EnsemblePlot({
   const downloadFormatId = useId()
   const plotDivRef = useRef(null)
   const [downloadFormat, setDownloadFormat] = useState('svg')
+  // Column name of the currently click-selected trace (issue #36), or null.
+  // Selection is per-plot view state — not lifted to App, so each split panel
+  // tracks its own highlight independently.
+  const [selectedColumn, setSelectedColumn] = useState(null)
   const canDownloadPlot = typeof PlotlyLib?.downloadImage === 'function'
+
+  // Identify individual ensemble traces by name. Only these are clickable /
+  // dimmable; bands, mean lines and legend-only traces are excluded.
+  const columnSet = useMemo(() => new Set(columns), [columns])
   const { traces, layout } = useMemo(() => {
     if (!rows || !rows.length) return { traces: [], layout: {} }
 
@@ -209,6 +217,30 @@ export default function EnsemblePlot({
     return { traces, layout }
   }, [rows, indexColumn, columns, labelsByColumn, colorBy, colorMap, visibleColumns, showBands, showPlotLegend, indexType, xAxisLabel, yAxisLabel, defaultYAxisLabel, lineStyleControls, tickFormat, axisRanges])
 
+  // A selected trace that's been filtered out (or whose slot changed) is no
+  // longer drawable — drop the stale highlight so the plot doesn't stay dimmed
+  // with nothing emphasized.
+  useEffect(() => {
+    if (selectedColumn && (!columnSet.has(selectedColumn) || !visibleColumns.has(selectedColumn))) setSelectedColumn(null)
+  }, [selectedColumn, columnSet, visibleColumns])
+
+  // Apply the selection highlight WITHOUT rebuilding the heavy base traces —
+  // reuses x/y array refs, overriding only line/opacity. See plotStyle.js.
+  const displayTraces = useMemo(
+    () => applySelectionHighlight(traces, selectedColumn, columnSet),
+    [traces, selectedColumn, columnSet]
+  )
+
+  // Click → toggle the selected trace. Clicks on bands/mean/legend traces
+  // (not in columnSet) are ignored so only ensemble members are selectable.
+  const handleClick = useCallback((e) => {
+    const name = e?.points?.[0]?.data?.name
+    if (!name || !columnSet.has(name)) return
+    setSelectedColumn((cur) => (cur === name ? null : name))
+  }, [columnSet])
+
+  const selectedLabels = selectedColumn ? labelsByColumn[selectedColumn] ?? {} : null
+
   const handleDownload = useCallback(() => {
     if (!plotDivRef.current || !canDownloadPlot) return
     PlotlyLib.downloadImage(plotDivRef.current, {
@@ -245,12 +277,38 @@ export default function EnsemblePlot({
         </button>
       </div>
 
+      {selectedColumn && (
+        <div className="flex items-start gap-2 border border-rule bg-paper px-2 py-1 text-[10px] font-mono">
+          <span className="uppercase tracking-wider text-muted shrink-0">selected</span>
+          <div className="min-w-0 flex-1">
+            <div className="font-medium text-ink break-all">{selectedColumn}</div>
+            {selectedLabels && Object.keys(selectedLabels).length > 0 && (
+              <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-muted">
+                {Object.entries(selectedLabels).map(([k, v]) => (
+                  <span key={k}>
+                    {k}: <span className="text-ink">{String(v) || '⟨empty⟩'}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => setSelectedColumn(null)}
+            className="shrink-0 px-2 py-0.5 uppercase tracking-wider border border-rule hover:border-ink transition-colors"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+
       <div className="min-h-0 flex-1">
         <Plot
-          data={traces}
+          data={displayTraces}
           layout={layout}
           useResizeHandler
           style={{ width: '100%', height: '100%' }}
+          onClick={handleClick}
           onInitialized={(_, graphDiv) => {
             plotDivRef.current = graphDiv
           }}

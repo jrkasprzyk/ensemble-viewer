@@ -4,6 +4,8 @@ import {
   tickFormatString,
   escapePlotlyText,
   buildLegendTraces,
+  applySelectionHighlight,
+  SELECT_DIM_OPACITY,
   MIN_LINE_WIDTH,
   MAX_LINE_WIDTH,
   MIN_LINE_OPACITY,
@@ -117,5 +119,52 @@ describe('resolveLineStyling — numeric overrides (DR-04/DR-05)', () => {
     const opacityOnly = resolveLineStyling(100, false, { thickness: 1, opacity: 1, opacityOverride: 0.42 })
     expect(opacityOnly.opacity).toBe(0.42)
     expect(opacityOnly.lineWidth).toBe(computed.lineWidth) // width still computed
+  })
+})
+
+describe('applySelectionHighlight (issue #36)', () => {
+  const indiv = (name, width = 1.5) => ({ type: 'scattergl', name, line: { width, color: '#abc' }, opacity: 0.4 })
+  const band = () => ({ type: 'scatter', name: 'A p10–p90', line: { width: 0 }, fill: 'tonexty' })
+  const columnSet = new Set(['a', 'b', 'c'])
+
+  it('returns the input unchanged when nothing is selected', () => {
+    const traces = [indiv('a'), indiv('b')]
+    expect(applySelectionHighlight(traces, null, columnSet)).toBe(traces)
+  })
+
+  it('dims non-selected individuals and emphasizes the selected one', () => {
+    const out = applySelectionHighlight([indiv('a'), indiv('b'), indiv('c')], 'b', columnSet)
+    const a = out.find((t) => t.name === 'a')
+    const b = out.find((t) => t.name === 'b')
+    expect(a.opacity).toBe(SELECT_DIM_OPACITY)
+    expect(b.opacity).toBe(1)
+    expect(b.line.width).toBeGreaterThan(1.5) // widened
+    expect(b.line.width).toBeLessThanOrEqual(MAX_LINE_WIDTH)
+  })
+
+  it('draws the selected trace last so WebGL renders it on top', () => {
+    const out = applySelectionHighlight([indiv('a'), indiv('b'), indiv('c')], 'a', columnSet)
+    const individuals = out.filter((t) => t.type === 'scattergl')
+    expect(individuals[individuals.length - 1].name).toBe('a')
+  })
+
+  it('leaves bands/legend untouched and after the individuals (fill adjacency)', () => {
+    const traces = [indiv('a'), indiv('b'), band()]
+    const out = applySelectionHighlight(traces, 'a', columnSet)
+    const bandTrace = out.find((t) => t.type === 'scatter')
+    expect(bandTrace).toBe(traces[2]) // same ref, unmodified
+    expect(out[out.length - 1]).toBe(bandTrace) // still last
+  })
+
+  it('does not mutate the original trace objects', () => {
+    const traces = [indiv('a'), indiv('b')]
+    applySelectionHighlight(traces, 'a', columnSet)
+    expect(traces[0].opacity).toBe(0.4)
+    expect(traces[0].line.width).toBe(1.5)
+  })
+
+  it('returns the input unchanged when the selected column is not drawable', () => {
+    const traces = [indiv('a'), indiv('b')]
+    expect(applySelectionHighlight(traces, 'zzz', columnSet)).toBe(traces)
   })
 })

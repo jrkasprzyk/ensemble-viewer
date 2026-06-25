@@ -163,6 +163,54 @@ export function buildLegendTraces({ colorBy, resolvedColorMap, bandsActive, show
   }))
 }
 
+// Trace selection emphasis (issue #36). DIM_OPACITY fades non-selected ensemble
+// members; the selected line is widened by SELECT_WIDTH_FACTOR (floored at
+// MIN_SELECT_WIDTH, capped at MAX_LINE_WIDTH) and drawn fully opaque.
+export const SELECT_DIM_OPACITY = 0.12
+const SELECT_WIDTH_FACTOR = 1.8
+const MIN_SELECT_WIDTH = 2
+
+/**
+ * Apply the click-selection highlight to a built trace array WITHOUT rebuilding
+ * the (expensive) x/y data: spreads each trace, overriding only line/opacity.
+ *
+ * Individual ensemble traces are identified by `columnSet.has(trace.name)` and
+ * `type === 'scattergl'`; everything else (bands, mean lines, legend-only) is
+ * left untouched and kept in its original relative order so the band fill
+ * adjacency (`fill:'tonexty'`) survives. The selected individual trace is moved
+ * to the end of the individual block so WebGL draws it on top of the dimmed
+ * siblings.
+ *
+ * Returns the input array unchanged when nothing is selected, or when the
+ * selected column isn't a drawable individual trace (caller drops the stale
+ * highlight separately, but this stays safe regardless).
+ *
+ * @param {object[]} traces
+ * @param {?string}  selectedColumn
+ * @param {Set<string>} columnSet
+ * @returns {object[]}
+ */
+export function applySelectionHighlight(traces, selectedColumn, columnSet) {
+  if (!selectedColumn) return traces
+  const dimmed = []
+  const rest = []
+  let selected = null
+  for (const t of traces) {
+    if (t.type === 'scattergl' && t.visible !== false && columnSet.has(t.name)) {
+      if (t.name === selectedColumn) {
+        const width = clamp((t.line?.width ?? 1.5) * SELECT_WIDTH_FACTOR, MIN_SELECT_WIDTH, MAX_LINE_WIDTH)
+        selected = { ...t, opacity: 1, line: { ...t.line, width } }
+      } else {
+        dimmed.push({ ...t, opacity: SELECT_DIM_OPACITY })
+      }
+    } else {
+      rest.push(t)
+    }
+  }
+  if (!selected) return traces
+  return [...dimmed, selected, ...rest]
+}
+
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value))
 }
