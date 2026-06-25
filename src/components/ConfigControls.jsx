@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 import { serializeConfig, parseConfig } from '../lib/config.js'
+import CollapsibleSection from './CollapsibleSection.jsx'
 
 /**
  * ConfigControls (Phase 6a — TASK-028).
@@ -52,10 +53,7 @@ export default function ConfigControls({ getConfig, onLoadConfig, onError }) {
   }
 
   return (
-    <section className="relative border border-rule border-l-[3px] border-l-[#3f4a52] bg-paper rounded-sm p-3 flex flex-col gap-2 text-xs">
-      <header className="font-mono uppercase tracking-[0.18em] text-[10px] text-[#3f4a52]">
-        Configuration
-      </header>
+    <CollapsibleSection tone="config" label="Configuration" defaultOpen={false}>
       <p className="text-[10px] text-muted leading-snug">
         Save the current left-panel settings to a reusable XML preset, or load one.
         Loading restores controls only — it never re-reads the data file.
@@ -83,6 +81,6 @@ export default function ConfigControls({ getConfig, onLoadConfig, onError }) {
           onChange={(e) => handleLoad(e.target.files?.[0])}
         />
       </div>
-    </section>
+    </CollapsibleSection>
   )
 }

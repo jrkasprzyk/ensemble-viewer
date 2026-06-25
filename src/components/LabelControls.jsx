@@ -8,27 +8,15 @@ import {
   MIN_LINE_WIDTH,
   MAX_LINE_WIDTH,
 } from '../lib/plotStyle.js'
+import CollapsibleSection from './CollapsibleSection.jsx'
 
-// Editorial accent stripes tuned to the cream paper + burnt-orange palette.
-// Five tones, each used in exactly one section: a colored left-edge rule
-// plus a small-caps header in the same color.
-const TONES = {
-  display:        { edge: 'border-l-[#c94a1a]', text: 'text-[#c94a1a]' },
-  faceting:       { edge: 'border-l-[#a87a2c]', text: 'text-[#a87a2c]' },
-  filter:         { edge: 'border-l-[#6b7a3a]', text: 'text-[#6b7a3a]' },
-  classification: { edge: 'border-l-[#8b2e2e]', text: 'text-[#8b2e2e]' },
-  categories:     { edge: 'border-l-[#3f4a52]', text: 'text-[#3f4a52]' },
-}
-
-function Section({ tone, label, children, className = '' }) {
-  const t = TONES[tone]
+// Thin alias so existing JSX below keeps reading as <Section tone=… label=…>
+// but now delegates to CollapsibleSection with per-section default-open values.
+function Section({ tone, label, defaultOpen = true, badge, children, className = '' }) {
   return (
-    <section className={`relative border border-rule border-l-[3px] ${t.edge} bg-paper rounded-sm p-3 flex flex-col gap-2 ${className}`}>
-      <header className={`font-mono uppercase tracking-[0.18em] text-[10px] ${t.text}`}>
-        {label}
-      </header>
+    <CollapsibleSection tone={tone} label={label} defaultOpen={defaultOpen} badge={badge} className={className}>
       {children}
-    </section>
+    </CollapsibleSection>
   )
 }
 
@@ -415,7 +403,7 @@ export default function LabelControls({
       </Section>
 
       {/* ─────────────────────────── FACETING ─────────────────────────── */}
-      <Section tone="faceting" label="Faceting">
+      <Section tone="faceting" label="Faceting" defaultOpen={false}>
         <div className="flex flex-col gap-1">
           <label className="font-mono uppercase tracking-wider text-[10px] text-muted">
             Multiple plots by
@@ -461,7 +449,7 @@ export default function LabelControls({
       </Section>
 
       {/* ─────────────────────────── FILTER ─────────────────────────── */}
-      <Section tone="filter" label="Filter">
+      <Section tone="filter" label="Filter" badge={sortCategory ? `by ${sortCategory}` : undefined}>
         <div className="flex flex-col gap-1">
           <label className="font-mono uppercase tracking-wider text-[10px] text-muted">
             Sort / filter by

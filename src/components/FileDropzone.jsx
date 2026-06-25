@@ -200,9 +200,6 @@ export default function FileDropzone({
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-col">
-          <span className="font-mono uppercase tracking-wider text-[10px] text-muted">
-            Data file
-          </span>
           <span className="text-ink">
             {rdfFileNames.length > 0
               ? 'Add more RDF files, or drop a CSV/XLSX to replace'
