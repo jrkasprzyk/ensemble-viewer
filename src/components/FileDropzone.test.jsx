@@ -138,6 +138,47 @@ describe('FileDropzone — examples manifest loading', () => {
     expect(fileInput.value).toBe('')
   })
 
+  // Regression: Issue #39 — drag-and-drop a second RDF file negated the first.
+  //
+  // Root cause: the window-level drop handler (registered once with [] deps)
+  // captured a stale handleFiles closure that held the initial onRdf prop. The
+  // initial onRdf in App.jsx captured `rdf = null` from mount time, so the
+  // second drop treated existing data as absent and replaced it.
+  //
+  // Fix: handleFilesRef.current is updated on every render, so the long-lived
+  // drop handler always forwards to the current onRdf prop.
+  it('window drop event calls the latest onRdf after re-render with a new prop', async () => {
+    fetchExamples.mockResolvedValue(SAMPLE_EXAMPLES)
+    const onRdf1 = vi.fn()
+    const onRdf2 = vi.fn()
+    const onFile = vi.fn()
+
+    const { rerender } = render(
+      <StrictMode>
+        <FileDropzone onFile={onFile} onRdf={onRdf1} hasData={false} />
+      </StrictMode>
+    )
+    await waitFor(() => expect(screen.getByLabelText('Examples').disabled).toBe(false))
+
+    // Re-render with a different onRdf (as App does after parsing the first file).
+    rerender(
+      <StrictMode>
+        <FileDropzone onFile={onFile} onRdf={onRdf2} hasData={true} rdfFileNames={['first.rdf']} />
+      </StrictMode>
+    )
+
+    // Simulate a window-level drop of a second RDF file.
+    const rdfFile = new File(['rdf'], 'second.rdf', { type: 'application/xml' })
+    const dropEvent = Object.assign(new Event('drop'), {
+      dataTransfer: { files: [rdfFile] },
+    })
+    window.dispatchEvent(dropEvent)
+
+    // The latest onRdf (onRdf2) must be called — not the stale initial onRdf1.
+    expect(onRdf2).toHaveBeenCalledWith([rdfFile])
+    expect(onRdf1).not.toHaveBeenCalled()
+  })
+
   it('lists loaded RDF files with working remove buttons', async () => {
     fetchExamples.mockResolvedValue(SAMPLE_EXAMPLES)
     const onRemoveRdfFile = vi.fn()

@@ -47,6 +47,9 @@ export default function FileDropzone({
   const mountedRef = useRef(true)
   const [drag, setDrag] = useState(false)
   const dragCounterRef = useRef(0)
+  // Always holds the latest handleFiles so the window drag-drop effect (which
+  // is registered once with empty deps) never calls a stale closure.
+  const handleFilesRef = useRef(null)
   const [examples, setExamples] = useState([])
   const [loadingExamples, setLoadingExamples] = useState(true)
   const [loadingExampleSelection, setLoadingExampleSelection] = useState(false)
@@ -76,7 +79,7 @@ export default function FileDropzone({
       e.preventDefault()
       dragCounterRef.current = 0
       setDrag(false)
-      handleFiles(e.dataTransfer.files)
+      handleFilesRef.current(e.dataTransfer.files)
     }
 
     window.addEventListener('dragenter', onDragEnter)
@@ -120,6 +123,10 @@ export default function FileDropzone({
     }
     if (inputRef.current) inputRef.current.value = ''
   }
+
+  // Keep the ref in sync with the latest handleFiles on every render so the
+  // window-level drag-drop effect (registered once) never calls a stale closure.
+  handleFilesRef.current = handleFiles
 
   async function handleExampleChange(exampleId) {
     if (!exampleId) return
