@@ -9,10 +9,28 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ## [Unreleased]
 
 ### Added
+
+### Fixed
+
+## [0.2.1] — 2026-06-25
+
+### Added
+- **Multiple RDF files** — load several `.rdf` files together; slots merge across files and runs (#35)
+- **Multiple text/CSV files** — load consecutive files together with classification scheme names kept consistent across uploads (#33)
+- **Load from URL** — input for web-hosted datasets plus `?url=` shareable links that auto-load on open
+- **Run-tag input** in the top bar
+- **Full source path** shown in the top bar (#29)
+- **Collapsible boxes** on the left control panel (#27)
 - Classification coloring now shows Success/Failure color swatches in the control panel (#24)
 - On-figure color legend for any `colorBy` mode — exports with SVG/PNG; toggle via Display → "Show color legend on the figure" (#24)
 
 ### Fixed
+- **RDF merge** — detect duplicate slots across all runs; soft-land duplicate slots instead of failing the load (#35)
+- **Slot selection** — show the slot-selection prompt after an RDF load
+- **Classification schemes** — derive names in the context of prior uploads, sort for stable UI order, surface duplicate-scheme errors, and append schemes across consecutive uploads
+- **Security** — escape Plotly text sinks, guard CSV formula injection, strip whitespace in the security check, bump vitest (#30, #31)
+- **Legend** — handle empty strings when building the legend; base synthetic legend traces on groups
+- Dependency vulnerability bumps
 
 ## [0.2.0] — 2026-06-03
 
@@ -61,6 +79,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - Sample dataset loader
 - Percentile band overlay (10th–90th with mean/median)
 
-[Unreleased]: https://github.com/jrkasprzyk/ensemble-viewer/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/jrkasprzyk/ensemble-viewer/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/jrkasprzyk/ensemble-viewer/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/jrkasprzyk/ensemble-viewer/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/jrkasprzyk/ensemble-viewer/releases/tag/v0.1.0

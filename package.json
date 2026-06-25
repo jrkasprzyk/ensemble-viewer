@@ -1,7 +1,7 @@
 {
   "name": "ensemble-viewer",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "Browser-based ensemble timeseries viewer for scientific data. Drop a wide CSV/XLSX, label columns by category, filter and color interactively.",
   "scripts": {
